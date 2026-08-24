@@ -116,6 +116,14 @@ shallow-regrets/
 - 新增测试：`tests/solo/soloScript.test.js`（12 例：固定卡组 / 能力 / 抽牌 / 钓走放回剧本分支）、`tests/solo/soloFlow.test.js`（9 例：先后手 / 确定性 / 防死锁 / 结算评价）、`tests/ui/soloUI.test.js`（4 例：设置入口 / 脚本自动行动日志 / 结算评价 / 返回首页）。
 - 为什么：M5 核心逻辑此前已完成，本次补齐 Solo UI、共享交互抽取与全量测试，使 M5 可完整游玩并通过验收。
 
+### 2026-08-25 · 上传 GitHub 并启用 GitHub Pages 托管
+- 新建公开仓库 `Jeko-jike/shallow-regrets`，`main` 分支存放全部源码，`gh-pages` 分支仅含构建产物 `index.html`（自包含）。
+- Pages 经典部署：发布源 = `gh-pages` 分支根目录，站点 `https://jeko-jike.github.io/shallow-regrets/`。
+- 坑点与经验：
+  - 推送含 `.github/workflows/*.yml` 的提交需 GitHub `workflow` scope（当前 keyring 令牌只有 `repo`），故未采用 Actions 方案，改用 gh-pages 分支经典部署。
+  - PowerShell 管道写 `git mktree` 时文件名末尾被加上 `\r`，导致 Pages 找不到 `index.html` 返回 404；改用 `git update-index --cacheinfo 100644,<blob>,index.html` + `write-tree` + `commit-tree` 即可得到干净的根树。
+- 静态托管说明：GitHub Pages 无后端，**M3 联机仍需本机启动 `npm run serve` + cloudflared**；M1/M2/M4/M5 单机模式可直接在线游玩。
+
 ### 2026-08-25 · M4 观战 UI 完成
 - 新增 `js/ui/spectateUI.js`：M4 观战界面（AI 面板、速度/回合控制、战斗日志滚动区、回放导出）。
 - 新增 `js/ui/screens.js`：共享屏幕切换（消除 main.js 与 spectateUI 的重复）。

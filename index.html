@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>浅滩鱼悔 · Shallow Regrets</title>
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/cards.css" />
+  <link rel="stylesheet" href="css/board.css" />
+  <link rel="stylesheet" href="css/modal.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <!-- ===== 首页：五种模式入口 ===== -->
+  <div id="home" class="home-screen">
+    <div class="home-title">
+      <h1>浅滩鱼悔</h1>
+      <div class="sub">SHALLOW REGRETS</div>
+    </div>
+    <p class="home-subtitle">在灰雾笼罩的海面下，钓起那些不该被钓起的恐怖之物。</p>
+
+    <div class="mode-grid">
+      <button class="mode-card" data-mode="m1">
+        <span class="mode-tag">M1 · 热座</span>
+        <h3>本地对战</h3>
+        <p>同一设备 2-3 人轮流操作，支持遮挡防作弊切换。</p>
+      </button>
+      <button class="mode-card" data-mode="m2">
+        <span class="mode-tag">M2 · 单机</span>
+        <h3>单人 AI 对战</h3>
+        <p>与启发式 AI 电脑对战，AI 与玩家走同一套规则。</p>
+      </button>
+      <button class="mode-card" data-mode="m3">
+        <span class="mode-tag">M3 · 联机</span>
+        <h3>联机对战</h3>
+        <p>主机用 cloudflared 暴露临时网址，好友输入房间码加入。</p>
+      </button>
+      <button class="mode-card" data-mode="m4">
+        <span class="mode-tag">M4 · 观战</span>
+        <h3>AI 斗蛐蛐</h3>
+        <p>观看 AI 对战 AI 的完整对局，支持自动/手动回合与速度档位。</p>
+      </button>
+      <button class="mode-card" data-mode="m5">
+        <span class="mode-tag">M5 · Solo</span>
+        <h3>Solo 挑战</h3>
+        <p>挑战由 6 张固定卡牌构成的脚本对手「渔夫与青蛙」。</p>
+      </button>
+    </div>
+
+    <div class="home-actions">
+      <button class="btn" id="btnRules">📖 规则说明</button>
+      <button class="btn" id="btnSettings">⚙️ 设置</button>
+    </div>
+  </div>
+
+  <!-- ===== 联机大厅 ===== -->
+  <div id="lobby" class="lobby-screen">
+    <div class="lobby-head">
+      <div class="lobby-title">联机对战</div>
+      <div class="lobby-code-wrap">
+        <span class="lobby-code-label">房间码</span>
+        <div class="lobby-code" id="lobbyCode">----</div>
+      </div>
+      <div class="lobby-conn" id="lobbyConn">连接中…</div>
+    </div>
+    <div class="lobby-sub">把房间码发给好友，好友在「加入房间」输入即可加入</div>
+    <div class="lobby-players" id="lobbyPlayers"></div>
+    <div class="lobby-actions">
+      <button class="btn btn-primary" id="btnReady">准备</button>
+      <button class="btn btn-primary" id="btnStart" style="display:none">开始对局</button>
+      <button class="btn" id="btnLeaveRoom">离开房间</button>
+    </div>
+    <div class="lobby-hint" id="lobbyHint"></div>
+  </div>
+
+  <!-- ===== 对局页 ===== -->
+  <div id="game" class="game-screen">
+    <div class="game-topbar">
+      <div class="title" id="gameTitle">浅滩鱼悔</div>
+      <div class="turn-info" id="turnInfo"></div>
+      <div class="topbar-actions">
+        <button class="btn btn-sm" id="btnCoverToggle" title="热座遮挡切换">遮挡：开</button>
+        <button class="btn btn-sm" id="btnBackHome">返回首页</button>
+      </div>
+    </div>
+
+    <div class="players-bar" id="playersBar"></div>
+
+    <div class="board-center">
+      <div class="shoals-row" id="shoalsRow"></div>
+      <div class="drawn-area" id="drawnArea">
+        <div class="da-head">
+          <span class="da-title">抽出牌</span>
+          <span class="da-hint" id="daHint"></span>
+        </div>
+        <div class="drawn-cards" id="drawnCards"></div>
+      </div>
+    </div>
+
+    <div class="players-caught" id="playersCaught"></div>
+
+    <div class="action-bar" id="actionBar"></div>
+    <div class="status-line" id="statusLine"></div>
+
+    <!-- ===== M4 观战控制与战斗日志（默认隐藏） ===== -->
+    <div id="spectatePanel" class="spectate-panel" style="display:none">
+      <div class="side-panel sp-controls">
+        <div class="panel-title">回合控制</div>
+        <div class="sp-row">
+          <div class="sp-seg" id="spModeSeg">
+            <button type="button" data-mode="auto" class="seg-btn active">自动</button>
+            <button type="button" data-mode="manual" class="seg-btn">手动</button>
+          </div>
+          <div class="sp-seg" id="spSpeedSeg">
+            <button type="button" data-speed="slow" class="seg-btn">慢</button>
+            <button type="button" data-speed="medium" class="seg-btn active">中</button>
+            <button type="button" data-speed="fast" class="seg-btn">快</button>
+          </div>
+        </div>
+        <div class="sp-row" id="spManualWrap" style="display:none">
+          <button class="btn btn-sm btn-primary" id="spNextTurn">下一回合</button>
+          <button class="btn btn-sm" id="spAutoN">自动 5 回合</button>
+          <button class="btn btn-sm" id="spFinish">立即结束</button>
+        </div>
+        <div class="sp-row">
+          <button class="btn btn-sm" id="spExport">导出回放</button>
+          <span class="sp-status" id="spStatus"></span>
+        </div>
+      </div>
+
+      <div class="side-panel sp-log-panel">
+        <div class="panel-title">战斗日志</div>
+        <div class="sp-log" id="spLog"></div>
+      </div>
+    </div>
+
+    <!-- ===== M5 Solo 面板（默认隐藏） ===== -->
+    <div id="soloPanel" class="solo-panel" style="display:none">
+      <div class="side-panel sp-controls">
+        <div class="panel-title">脚本对手</div>
+        <div class="solo-opp">
+          <div class="solo-opp-name">渔夫与青蛙</div>
+          <div class="solo-opp-sub">目标清单 · 6 张固定卡牌</div>
+        </div>
+        <div class="solo-targets" id="soloTargets"></div>
+
+        <div class="panel-title">特色目标</div>
+        <div class="solo-goals" id="soloGoals"></div>
+
+        <div class="panel-title">脚本意图</div>
+        <div class="solo-intent" id="soloIntent">等待你的行动…</div>
+      </div>
+
+      <div class="side-panel sp-log-panel">
+        <div class="panel-title">脚本行动</div>
+        <div class="sp-log" id="soloLog"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 结算页 ===== -->
+  <div id="result" class="result-screen">
+    <h2 class="result-title">对局结束</h2>
+    <div class="result-subtitle" id="resultSubtitle"></div>
+    <div class="result-grid" id="resultGrid"></div>
+    <!-- M5 Solo 结算评价（默认隐藏） -->
+    <div id="soloResult" class="solo-result" style="display:none"></div>
+    <div class="result-actions">
+      <button class="btn btn-primary" id="btnReplay">再来一局</button>
+      <button class="btn" id="btnResultHome">返回首页</button>
+    </div>
+  </div>
+
+  <!-- ===== 热座遮挡 ===== -->
+  <div id="turnCover" class="turn-cover" style="display:none">
+    <div class="tc-title" id="tcTitle"></div>
+    <div class="tc-sub" id="tcSub"></div>
+    <button class="btn btn-primary" id="tcBtn">确认，开始</button>
+  </div>
+
+  <!-- ===== 弹窗 ===== -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="modalTitle"></div>
+        <button class="modal-close" id="modalClose">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

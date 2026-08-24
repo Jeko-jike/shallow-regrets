@@ -1,0 +1,68 @@
+/* ===== 响应式：桌面与手机竖屏 ===== */
+
+@media (max-width: 860px) {
+  .shoals-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .players-caught {
+    grid-template-columns: 1fr;
+  }
+
+  .spectate-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .solo-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .home-title h1 {
+    font-size: 32px;
+    letter-spacing: 4px;
+  }
+}
+
+@media (max-width: 520px) {
+  :root {
+    --card-w: 78px;
+    --card-h: 116px;
+    --card-w-lg: 100px;
+    --card-h-lg: 150px;
+  }
+
+  .game-screen {
+    padding: 8px 10px 20px;
+  }
+
+  .drawn-area {
+    padding: 10px;
+  }
+
+  .drawn-cards {
+    gap: 8px;
+  }
+
+  .caught-panel .cp-cards .card-front {
+    width: 56px;
+    height: 82px;
+  }
+
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+}
+
+/* 触屏降级：拖拽不可用时点击选择（默认即点击交互，无需额外处理） */
+@media (hover: none) {
+  .card-front.selectable:hover,
+  .card-back.selectable:hover {
+    transform: none;
+  }
+}

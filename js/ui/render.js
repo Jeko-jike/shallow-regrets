@@ -1,0 +1,321 @@
+/**
+ * 视图渲染：浅滩堆 / 抽出牌 / 玩家钓获区 / 操作区 / 结算面板。
+ * 纯渲染：输入 (state, ui, handlers) 更新 DOM；不持有业务规则。
+ */
+import { CARD_BY_ID } from '../core/cards.js';
+import { getHooks } from '../core/gameState.js';
+import { getResults, getWinners } from '../core/scoring.js';
+import { getArtUrl } from '../data/artPrompts.js';
+import { ABILITY_DESCRIPTIONS } from '../core/abilities.js';
+
+const artCache = new Map();
+
+function artUrl(card) {
+  if (!artCache.has(card.id)) artCache.set(card.id, getArtUrl(card.art));
+  return artCache.get(card.id);
+}
+
+/**
+ * 构建一张卡面元素。
+ * @param {object} card 鱼卡数据
+ * @param {{size?:string, selectable?:boolean, selected?:boolean, exhausted?:boolean, legalTarget?:boolean, data?:Record<string,string|number>}} opts
+ */
+export function buildCardFront(card, { size = '', selectable = false, selected = false, exhausted = false, legalTarget = false, data = {} } = {}) {
+  const el = document.createElement('div');
+  el.className = ['card-front', card.type === 'foul' ? 'foul' : '', size].filter(Boolean).join(' ');
+  if (selectable) el.classList.add('selectable');
+  if (selected) el.classList.add('selected');
+  if (exhausted) el.classList.add('exhausted');
+  if (legalTarget) el.classList.add('legal-target');
+  for (const [k, v] of Object.entries(data)) el.dataset[k] = String(v);
+
+  const img = document.createElement('img');
+  img.className = 'cf-art';
+  img.alt = card.name;
+  img.draggable = false;
+  img.src = artUrl(card);
+  img.addEventListener('error', () => {
+    img.remove();
+    el.classList.add('art-fallback');
+  }, { once: true });
+  el.appendChild(img);
+
+  const shade = document.createElement('div');
+  shade.className = 'cf-shade';
+  el.appendChild(shade);
+
+  const pts = document.createElement('div');
+  pts.className = 'cf-points';
+  pts.textContent = card.points;
+  el.appendChild(pts);
+
+  const strength = document.createElement('div');
+  strength.className = 'cf-strength';
+  strength.innerHTML = `<span class="hook">⚓</span>${card.strength}`;
+  el.appendChild(strength);
+
+  if (card.type === 'foul') {
+    const tag = document.createElement('div');
+    tag.className = 'cf-foul-tag';
+    tag.textContent = '污秽';
+    el.appendChild(tag);
+  }
+
+  if (card.ability) {
+    const ab = document.createElement('div');
+    ab.className = 'cf-ability';
+    ab.textContent = ABILITY_DESCRIPTIONS[card.ability];
+    el.appendChild(ab);
+  }
+
+  const name = document.createElement('div');
+  name.className = 'cf-name';
+  name.textContent = card.name;
+  el.appendChild(name);
+
+  return el;
+}
+
+const PHASE_NAMES = { ability: '能力阶段', draw: '抽牌阶段', catch: '钓走/放回', gameOver: '对局结束' };
+
+export function renderTurnInfo(el, state) {
+  el.textContent = `第 ${state.turn} 回合 · ${state.players[state.currentPlayer].name} · ${PHASE_NAMES[state.phase] || state.phase}`;
+}
+
+export function renderPlayersBar(el, state) {
+  el.innerHTML = '';
+  state.players.forEach((p, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip' + (i === state.currentPlayer ? ' active' : '');
+    const name = document.createElement('div');
+    name.className = 'p-name';
+    name.textContent = p.name;
+    const hooks = document.createElement('div');
+    hooks.className = 'p-hooks';
+    hooks.innerHTML = `<span class="hook-icon">⚓</span>${getHooks(state, i)}`;
+    chip.appendChild(name);
+    chip.appendChild(hooks);
+    if (p.immune) {
+      const imm = document.createElement('div');
+      imm.className = 'p-foul';
+      imm.textContent = '🛡 免疫';
+      chip.appendChild(imm);
+    }
+    el.appendChild(chip);
+  });
+}
+
+/**
+ * 渲染 6 个浅滩堆。
+ * ui 字段：shoalClickable(i)、shoalSelected(i)、shoalSelectCount、throwTargets、peekTargets
+ */
+export function renderShoals(el, state, ui, handlers) {
+  el.innerHTML = '';
+  state.shoals.forEach((shoal, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'shoal' + (shoal.length === 0 ? ' empty' : '');
+    if (ui.throwTargets?.includes(i) || ui.peekTargets?.includes(i)) wrap.classList.add('highlight');
+
+    const stack = document.createElement('div');
+    stack.className = 'shoal-stack';
+    if (shoal.length === 0) {
+      stack.textContent = '空';
+    } else {
+      const show = Math.min(shoal.length, 3);
+      for (let k = 0; k < show; k++) {
+        const back = document.createElement('div');
+        back.className = 'card-back';
+        const clickable = (ui.shoalClickable?.(i) ?? false) && ui.canInteract !== false;
+        if (clickable) back.classList.add('selectable');
+        if (ui.shoalSelected?.(i)) back.classList.add('selected');
+        back.dataset.shoal = i;
+        if (clickable && handlers.onShoalClick) {
+          back.addEventListener('click', () => handlers.onShoalClick(i));
+        }
+        stack.appendChild(back);
+      }
+    }
+    wrap.appendChild(stack);
+
+    const label = document.createElement('div');
+    label.className = 'shoal-label';
+    label.textContent = `浅滩${i + 1}`;
+    wrap.appendChild(label);
+
+    const count = document.createElement('div');
+    count.className = 'shoal-count';
+    count.textContent = `${shoal.length} 张`;
+    wrap.appendChild(count);
+
+    const selCount = ui.shoalSelectCount?.[i] || 0;
+    if (selCount > 0) {
+      const badge = document.createElement('div');
+      badge.className = 'shoal-badge';
+      badge.textContent = selCount;
+      wrap.appendChild(badge);
+    }
+
+    el.appendChild(wrap);
+  });
+}
+
+/**
+ * 渲染抽出牌区（含钓走/放回按钮；观战模式 spectate 隐藏按钮）。
+ * ui 字段：drawnHint、mustCatchFirst
+ */
+export function renderDrawn(el, state, ui, handlers, { spectate = false } = {}) {
+  const hintEl = el.querySelector('#daHint');
+  const cardsEl = el.querySelector('#drawnCards');
+  cardsEl.innerHTML = '';
+  if (state.drawn.length === 0) {
+    hintEl.textContent = ui.drawnHint || '尚未抽牌';
+    return;
+  }
+  hintEl.textContent = ui.drawnHint || '';
+  state.drawn.forEach((cardId, idx) => {
+    const card = CARD_BY_ID[cardId];
+    const slot = document.createElement('div');
+    slot.className = 'drawn-card-slot';
+
+    const front = buildCardFront(card, { size: 'lg', data: { cardId, drawnIdx: idx } });
+    slot.appendChild(front);
+
+    if (!spectate) {
+      const actions = document.createElement('div');
+      actions.className = 'dc-actions';
+
+      const canAct = ui.canInteract !== false;
+      const btnCatch = document.createElement('button');
+      btnCatch.className = 'btn btn-sm btn-primary';
+      btnCatch.textContent = '钓走';
+      btnCatch.disabled = !canAct || !handlers.canCatch(cardId);
+      btnCatch.addEventListener('click', () => handlers.onCatch(cardId));
+      actions.appendChild(btnCatch);
+
+      const btnThrow = document.createElement('button');
+      btnThrow.className = 'btn btn-sm';
+      btnThrow.textContent = '放回';
+      btnThrow.disabled = !canAct || !!ui.mustCatchFirst;
+      btnThrow.addEventListener('click', () => handlers.onThrowClick(cardId));
+      actions.appendChild(btnThrow);
+
+      slot.appendChild(actions);
+    }
+    cardsEl.appendChild(slot);
+  });
+}
+
+/**
+ * 渲染玩家钓获区。
+ * ui 字段：fishClickable(playerIndex, cardId)
+ */
+export function renderCaught(el, state, ui, handlers) {
+  el.innerHTML = '';
+  state.players.forEach((p, i) => {
+    const panel = document.createElement('div');
+    panel.className = 'caught-panel';
+    const head = document.createElement('div');
+    head.className = 'cp-head';
+    const name = document.createElement('div');
+    name.className = 'cp-name';
+    name.textContent = p.name + (i === state.currentPlayer ? '（当前）' : '');
+    const hooks = document.createElement('div');
+    hooks.className = 'cp-hooks';
+    hooks.textContent = `⚓ ${getHooks(state, i)} 钩`;
+    head.appendChild(name);
+    head.appendChild(hooks);
+    panel.appendChild(head);
+
+    const cards = document.createElement('div');
+    cards.className = 'cp-cards';
+    p.caught.forEach((cardId) => {
+      const card = CARD_BY_ID[cardId];
+      const exhausted = p.exhausted.includes(cardId);
+      const clickable = (ui.fishClickable?.(i, cardId) ?? false) && ui.canInteract !== false;
+      const front = buildCardFront(card, { selectable: clickable, exhausted, data: { player: i, cardId } });
+      if (clickable && handlers.onFishClick) {
+        front.addEventListener('click', () => handlers.onFishClick(i, cardId));
+      }
+      cards.appendChild(front);
+    });
+    panel.appendChild(cards);
+    el.appendChild(panel);
+  });
+}
+
+/** 渲染操作区（阶段上下文按钮） */
+export function renderActionBar(el, state, ui, handlers) {
+  el.innerHTML = '';
+  const canAct = ui.canInteract !== false;
+  const add = (text, className, onClick, disabled = false) => {
+    const b = document.createElement('button');
+    b.className = `btn ${className}`.trim();
+    b.textContent = text;
+    b.disabled = disabled || !canAct;
+    b.addEventListener('click', onClick);
+    el.appendChild(b);
+  };
+  switch (state.phase) {
+    case 'ability':
+      add('跳过能力阶段', 'btn-ghost', handlers.onPassAbilities);
+      break;
+    case 'draw':
+      add('确认抽牌', 'btn-primary', handlers.onConfirmDraw, !ui.drawCanConfirm);
+      break;
+    case 'catch':
+      add('取消放回', 'btn-ghost', handlers.onCancelThrow, !ui.throwCardId);
+      break;
+    default:
+      break;
+  }
+}
+
+export function renderStatus(el, state, ui) {
+  el.textContent = ui.statusText || '';
+}
+
+/** 渲染结算页 */
+export function renderResult(el, state) {
+  const results = getResults(state);
+  const winners = getWinners(state);
+  document.getElementById('resultSubtitle').textContent =
+    winners.length > 1 ? '平局！' : `胜者：${state.players[winners[0]].name}`;
+  const grid = document.getElementById('resultGrid');
+  grid.innerHTML = '';
+  results.forEach((r) => {
+    const card = document.createElement('div');
+    card.className = 'result-card' + (winners.includes(r.playerIndex) ? ' winner' : '');
+    const head = document.createElement('div');
+    head.className = 'rc-head';
+    const name = document.createElement('div');
+    name.className = 'rc-name';
+    name.textContent = r.name;
+    const score = document.createElement('div');
+    score.className = 'rc-score';
+    score.textContent = r.score;
+    head.appendChild(name);
+    head.appendChild(score);
+    card.appendChild(head);
+
+    const caught = document.createElement('div');
+    caught.className = 'rc-caught';
+    r.caught.forEach((c) => {
+      const mini = document.createElement('div');
+      mini.className = 'mini-card';
+      mini.style.backgroundImage = `url("${artUrl(c)}")`;
+      const pts = document.createElement('div');
+      pts.className = 'mini-pts';
+      pts.textContent = c.points;
+      mini.appendChild(pts);
+      caught.appendChild(mini);
+    });
+    card.appendChild(caught);
+
+    const meta = document.createElement('div');
+    meta.className = 'rc-meta';
+    meta.textContent = `钓获 ${r.caught.length} 条 · 污秽 ${r.foulCount} 条${r.foulCount > 0 ? '（-2 分）' : ''}`;
+    card.appendChild(meta);
+
+    grid.appendChild(card);
+  });
+}

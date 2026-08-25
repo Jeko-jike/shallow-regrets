@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createInitialState, getHooks, getTotalCaught, NUM_SHOALS, CARDS_PER_SHOAL, TOTAL_CARDS } from '../../js/core/gameState.js';
+import { createInitialState, getHooks, getTotalCaught, NUM_SHOALS, CARDS_PER_SHOAL, TOTAL_CARDS, MIN_SMALL_TOPS } from '../../js/core/gameState.js';
 import { CARD_BY_ID, CARDS } from '../../js/core/cards.js';
 
 describe('gameState.js 初始状态', () => {
@@ -14,22 +14,22 @@ describe('gameState.js 初始状态', () => {
     }
   });
 
-  it('回归：大量种子下保证 3 个易钓顶牌，且整副牌不重复不丢失', () => {
+  it('回归：大量种子下保证 MIN_SMALL_TOPS 个易钓顶牌，且整副牌不重复不丢失', () => {
     for (let seed = 0; seed < 2000; seed++) {
       const state = createInitialState({ seed, playerNames: ['A', 'B'] });
       const all = state.shoals.flat();
       expect(all).toHaveLength(TOTAL_CARDS);
       expect(new Set(all).size, `seed=${seed} 出现重复/丢失`).toBe(TOTAL_CARDS);
       const smallTops = state.shoals.filter((s) => CARD_BY_ID[s[0]].strength <= 0).length;
-      expect(smallTops, `seed=${seed} 易钓顶牌不足`).toBeGreaterThanOrEqual(3);
+      expect(smallTops, `seed=${seed} 易钓顶牌不足`).toBeGreaterThanOrEqual(MIN_SMALL_TOPS);
     }
   });
 
-  it('至少 3 个浅滩的顶牌是 strength<=0 的小鱼', () => {
+  it(`至少 ${MIN_SMALL_TOPS} 个浅滩的顶牌是 strength<=0 的小鱼`, () => {
     for (let seed = 0; seed < 50; seed++) {
       const state = createInitialState({ seed, playerNames: ['A', 'B'] });
       const smallTops = state.shoals.filter((s) => CARD_BY_ID[s[0]].strength <= 0).length;
-      expect(smallTops).toBeGreaterThanOrEqual(3);
+      expect(smallTops).toBeGreaterThanOrEqual(MIN_SMALL_TOPS);
     }
   });
 

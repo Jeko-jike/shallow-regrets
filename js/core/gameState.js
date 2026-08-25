@@ -9,8 +9,8 @@ import { CARDS, CARD_BY_ID, TOTAL_CARDS } from './cards.js';
 export const NUM_SHOALS = 6;
 export const CARDS_PER_SHOAL = 3;
 export const BASE_DRAW = 2;
-/** 开局至少保证多少个浅滩顶牌为"易钓小鱼"（strength<=0） */
-export const MIN_SMALL_TOPS = 3;
+/** 开局至少保证多少个浅滩顶牌为"易钓小鱼"（strength<=0，卡背显示难度 0-1） */
+export const MIN_SMALL_TOPS = 4;
 
 /**
  * 创建初始对局状态。

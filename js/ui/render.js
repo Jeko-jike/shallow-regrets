@@ -7,6 +7,7 @@ import { getHooks } from '../core/gameState.js';
 import { getResults, getWinners, getRawScore } from '../core/scoring.js';
 import { getArtUrl } from '../data/artPrompts.js';
 import { ABILITY_DESCRIPTIONS } from '../core/abilities.js';
+import { PHASE } from '../core/stateMachine.js';
 
 const artCache = new Map();
 
@@ -15,11 +16,12 @@ function artUrl(card) {
   return artCache.get(card.id);
 }
 
-/** 卡背难度区间：[strength-1, strength+1] 截断到 0-5（如难度 4 → "3-5"） */
+/** 卡背难度区间（固定分段，不看具体 strength 的 ±1）：
+ *  难度 0 → "0-1"；难度 1、2 → "1-2"；难度 3、4、5 → "3-5" */
 export function difficultyRange(strength) {
-  const lo = Math.max(0, strength - 1);
-  const hi = Math.min(5, strength + 1);
-  return `${lo}-${hi}`;
+  if (strength <= 0) return '0-1';
+  if (strength <= 2) return '1-2';
+  return '3-5';
 }
 
 /**
@@ -44,6 +46,8 @@ export function buildCardFront(card, { size = '', selectable = false, selected =
   img.className = 'cf-art';
   img.alt = card.name;
   img.draggable = false;
+  img.loading = 'lazy';
+  img.decoding = 'async';
   img.src = artUrl(card);
   img.addEventListener('error', () => {
     img.remove();
@@ -162,7 +166,7 @@ export function renderShoals(el, state, ui, handlers) {
         const range = document.createElement('div');
         range.className = 'cb-range';
         range.textContent = difficultyRange(CARD_BY_ID[shoal[k]].strength);
-        range.title = `鱼群难度区间（实际难度在其 ±1 内）`;
+        range.title = `鱼群难度区间（低难度鱼 0-1 / 1-2，高难度鱼 3-5）`;
         back.appendChild(range);
         if (clickable) back.classList.add('selectable');
         if (ui.shoalSelected?.(i)) back.classList.add('selected');
@@ -243,17 +247,55 @@ export function renderDrawn(el, state, ui, handlers, { spectate = false } = {}) 
     });
   }
 
-  // 能力阶段：在抽出牌下方提供"跳过能力阶段"按钮（放在玩家区上方，移动端易点）
-  const prev = el.querySelector('.dc-skip');
+  // 阶段性上下文字段按钮：跳过能力阶段 / 确认抽牌 / 清空重选 / 取消放回
+  renderDrawnContext(el, state, ui, handlers, spectate);
+}
+
+/**
+ * 阶段性上下文按钮行：统一放在抽出牌卡片下方（与"跳过能力阶段"同一位置），
+ * 让"跳过能力阶段 / 确认抽牌 / 清空重选 / 取消放回"布局一致、移动端更好点中。
+ */
+function renderDrawnContext(el, state, ui, handlers, spectate) {
+  const prev = el.querySelector('.dc-ctx');
   if (prev) prev.remove();
+  if (spectate) return;
   const canAct = ui.canInteract !== false;
-  if (!spectate && state.phase === 'ability' && canAct && handlers.onPassAbilities) {
-    const skip = document.createElement('button');
-    skip.className = 'btn btn-sm btn-ghost dc-skip';
-    skip.textContent = '跳过能力阶段 →';
-    skip.addEventListener('click', () => handlers.onPassAbilities());
-    el.appendChild(skip);
+  const row = document.createElement('div');
+  row.className = 'dc-ctx';
+  const add = (text, className, disabled, onClick) => {
+    if (!onClick) return;
+    const b = document.createElement('button');
+    b.className = `btn btn-sm ${className}`.trim();
+    b.textContent = text;
+    b.disabled = disabled || !canAct;
+    b.addEventListener('click', onClick);
+    row.appendChild(b);
+  };
+
+  switch (state.phase) {
+    case PHASE.ABILITY:
+      add('跳过能力阶段 →', 'btn-ghost dc-skip', false, () => handlers.onPassAbilities?.());
+      break;
+    case PHASE.DRAW:
+      add('确认抽牌', 'btn-primary', !ui.drawCanConfirm, () => handlers.onConfirmDraw?.());
+      if (ui.drawSelectedTotal > 0) add('清空重选', 'btn-ghost', false, () => handlers.onClearDraw?.());
+      break;
+    case PHASE.CATCH:
+      add('取消放回', 'btn-ghost', !ui.throwCardId, () => handlers.onCancelThrow?.());
+      break;
+    default:
+      break;
   }
+  if (row.childElementCount > 0) el.appendChild(row);
+}
+
+/**
+ * 渲染操作区（阶段上下文按钮）。
+ * 说明：阶段按钮（跳过/确认/清空/取消放回）已统一移至抽出牌区下方（renderDrawn 的 .dc-ctx），
+ * 此处不再重复生成按钮，仅保留占位（清空）。
+ */
+export function renderActionBar(el) {
+  el.innerHTML = '';
 }
 
 /**
@@ -284,7 +326,9 @@ export function renderCaught(el, state, ui, handlers) {
       const exhausted = p.exhausted.includes(cardId);
       const clickable = (ui.fishClickable?.(i, cardId) ?? false) && ui.canInteract !== false;
       const front = buildCardFront(card, { selectable: clickable, exhausted, data: { player: i, cardId } });
-      if (clickable && handlers.onFishClick) {
+      // 所有已钓的鱼都可点击查看详情（含无能力鱼、已横置的能力鱼）；
+      // 能力阶段选择目标时，onFishClick 会优先当作目标选择而非打开详情。
+      if (handlers.onFishClick) {
         front.addEventListener('click', () => handlers.onFishClick(i, cardId));
       }
       cards.appendChild(front);
@@ -292,36 +336,6 @@ export function renderCaught(el, state, ui, handlers) {
     panel.appendChild(cards);
     el.appendChild(panel);
   });
-}
-
-/** 渲染操作区（阶段上下文按钮） */
-export function renderActionBar(el, state, ui, handlers) {
-  el.innerHTML = '';
-  const canAct = ui.canInteract !== false;
-  const add = (text, className, onClick, disabled = false) => {
-    const b = document.createElement('button');
-    b.className = `btn ${className}`.trim();
-    b.textContent = text;
-    b.disabled = disabled || !canAct;
-    b.addEventListener('click', onClick);
-    el.appendChild(b);
-  };
-  switch (state.phase) {
-    case 'ability':
-      // 跳过能力阶段按钮已移至抽出牌区下方（renderDrawn），此处不再重复
-      break;
-    case 'draw':
-      add('确认抽牌', 'btn-primary', handlers.onConfirmDraw, !ui.drawCanConfirm);
-      if (ui.drawSelectedTotal > 0 && handlers.onClearDraw) {
-        add('清空重选', 'btn-ghost', handlers.onClearDraw);
-      }
-      break;
-    case 'catch':
-      add('取消放回', 'btn-ghost', handlers.onCancelThrow, !ui.throwCardId);
-      break;
-    default:
-      break;
-  }
 }
 
 export function renderStatus(el, state, ui) {

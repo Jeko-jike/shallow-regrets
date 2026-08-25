@@ -142,6 +142,9 @@ function renderAll() {
     onCatch: interaction.onCatch,
     onThrowClick: interaction.onThrowClick,
     onPassAbilities: interaction.onPassAbilities,
+    onConfirmDraw: interaction.onConfirmDraw,
+    onClearDraw: interaction.onClearDraw,
+    onCancelThrow: interaction.onCancelThrow,
     onCardInfo: (cardId) => interaction.showCardDetail?.(cardId),
   });
   render.renderCaught($('playersCaught'), s, ui, { onFishClick: interaction.onFishClick });

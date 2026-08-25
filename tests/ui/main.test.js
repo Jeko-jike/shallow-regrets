@@ -61,7 +61,7 @@ describe('M1 本地热座', () => {
     expect($('#turnInfo').textContent).toContain('抽牌阶段');
 
     // 5. 抽牌阶段：选 2 个浅滩 → 确认按钮启用
-    const confirmBtn = () => $$('#actionBar .btn').find((b) => b.textContent.includes('确认抽牌'));
+    const confirmBtn = () => $$('.dc-ctx .btn').find((b) => b.textContent.includes('确认抽牌'));
     expect(confirmBtn().disabled).toBe(true);
     const backs = $$('#shoalsRow .shoal .card-back');
     expect(backs.length).toBeGreaterThanOrEqual(6);
@@ -117,7 +117,7 @@ describe('M1 本地热座', () => {
       clickText('.dc-skip', '跳过能力阶段');
       click($$('#shoalsRow .shoal')[0].querySelector('.card-back'));
       click($$('#shoalsRow .shoal')[1].querySelector('.card-back'));
-      clickText('#actionBar .btn', '确认抽牌');
+      clickText('.dc-ctx .btn', '确认抽牌');
       let guard = 0;
       while ($$('#drawnCards .drawn-card-slot').length > 0 && guard++ < 5) {
         const slots = $$('#drawnCards .drawn-card-slot');
@@ -179,5 +179,25 @@ describe('render：回归——空浅滩可作为放回目标被点击', () => {
     expect(clickableEmpty).toBeTruthy();
     click(clickableEmpty);
     expect(hits).toContain(1);
+  });
+});
+
+describe('卡背难度区间 difficultyRange（固定分段）', () => {
+  it('回归：难度 0 → "0-1"，1/2 → "1-2"，3/4/5 → "3-5"', () => {
+    expect(render.difficultyRange(0)).toBe('0-1');
+    expect(render.difficultyRange(1)).toBe('1-2');
+    expect(render.difficultyRange(2)).toBe('1-2');
+    expect(render.difficultyRange(3)).toBe('3-5');
+    expect(render.difficultyRange(4)).toBe('3-5');
+    expect(render.difficultyRange(5)).toBe('3-5');
+  });
+
+  it('不变式：任意合法卡背区间都必须包含其自身所需钩数（防"标注 0-1 但翻开不符"回归）', () => {
+    const r = (s) => {
+      const seg = render.difficultyRange(s);
+      const [lo, hi] = seg.split('-').map(Number);
+      return s >= lo && s <= hi;
+    };
+    for (let s = 0; s <= 5; s++) expect(r(s)).toBe(true);
   });
 });

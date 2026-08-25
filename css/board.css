@@ -153,6 +153,21 @@
   border-color: rgba(45, 212, 191, 0.35);
 }
 
+/* 抽出牌卡片下方的阶段性上下文按钮行：跳过能力阶段 / 确认抽牌 / 清空重选 / 取消放回 统一在此 */
+.dc-ctx {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px auto 0;
+  width: fit-content;
+}
+
+.dc-ctx .dc-skip {
+  margin: 0;
+  width: auto;
+}
+
 /* 玩家钓获区 */
 .players-caught {
   display: grid;

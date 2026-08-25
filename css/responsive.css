@@ -1,5 +1,17 @@
 /* ===== 响应式：桌面与手机竖屏 ===== */
 
+/* PC（≥861px）：浅滩卡牌放大、缩减浅滩间距，让台面更饱满 */
+@media (min-width: 861px) {
+  :root {
+    --card-w: 132px;
+    --card-h: 198px;
+  }
+
+  .shoals-row {
+    gap: 6px;
+  }
+}
+
 @media (max-width: 860px) {
   .shoals-row {
     grid-template-columns: repeat(3, 1fr);

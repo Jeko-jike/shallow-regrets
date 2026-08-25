@@ -385,6 +385,9 @@ function renderAll() {
     onCatch,
     onThrowClick,
     onPassAbilities,
+    onConfirmDraw,
+    onClearDraw,
+    onCancelThrow,
     onCardInfo: (cardId) => showCardDetail(undefined, cardId),
   });
   render.renderCaught($('playersCaught'), s, ui, { onFishClick });

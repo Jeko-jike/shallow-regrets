@@ -1,0 +1,95 @@
+{
+  "quick_ref": {
+    "summary": "《浅滩鱼悔》Shallow Regrets 网页卡牌小游戏：M1 本地对战 / M2 单人 AI / M3 联机 / M4 AI 斗蛐蛐观战 / M5 Solo 挑战，深色海洋恐怖主题单页应用（18 张鱼卡，纯函数状态机）。",
+    "tech": [
+      "HTML5",
+      "CSS3",
+      "JavaScript (ES Modules)",
+      "Node.js + Express",
+      "Socket.IO",
+      "cloudflared-windows-amd64",
+      "Vite",
+      "Vitest + jsdom"
+    ],
+    "entry": "index.html（单页入口）；js/main.js（前端启动/路由）",
+    "last_touch": "2026-08-26"
+  },
+  "project_info": {
+    "name": "浅滩鱼悔 · Shallow Regrets",
+    "description": "深色海洋恐怖主题的团卡游戏网页版。核心为纯函数逻辑层（js/core/，100% 单测覆盖、禁触碰 DOM），UI 层只读状态派发动作；状态快照可序列化用于联机同步与回放。M3 联机用 Socket.IO + cloudflared；单机交付走 npm run build 内联为可双击 dist/index.html。",
+    "tech_stack": [
+      "HTML5/CSS3",
+      "Vanilla JS (ESM)",
+      "Node.js",
+      "Socket.IO",
+      "cloudflared-windows-amd64",
+      "Vite (base './')",
+      "Vitest + jsdom"
+    ]
+  },
+  "file_structure": {
+    "key_files": [
+      { "path": "index.html", "purpose": "单页入口：首页五模式 / 联机大厅 / 对局页（含 M4 观战面板与 M5 Solo 面板）/ 结算页", "last_updated": "2026-08-25" },
+      { "path": "js/main.js", "purpose": "前端入口：模式路由、对局控制器、M3 联机会话、点击事件绑定", "last_updated": "2026-08-25" },
+      { "path": "js/core/cards.js", "purpose": "18 张卡唯一数据源（含 strength 所需钩数 与 hooks 提供钩数）", "last_updated": "2026-08-25" },
+      { "path": "js/core/gameState.js", "purpose": "初始状态 / 不可变更新 / getHooks / ensureSmallTops（保证开局易钓顶牌）", "last_updated": "2026-08-25" },
+      { "path": "js/core/stateMachine.js", "purpose": "状态机 PHASE/ACTION、validateAction、applyAction", "last_updated": "2026-08-25" },
+      { "path": "js/core/rules.js", "purpose": "取牌合法性 / 强度判定 / 放生 / 终局判定", "last_updated": "2026-08-25" },
+      { "path": "js/core/abilities.js", "purpose": "六种能力效果纯函数表 + 目标校验 + 确定性随机", "last_updated": "2026-08-25" },
+      { "path": "js/ui/render.js", "purpose": "浅滩 / 抽出牌 / 钓获区 / 结算渲染；buildCardFront；卡背难度区间；阶段按钮 .dc-ctx", "last_updated": "2026-08-25" },
+      { "path": "js/ui/interaction.js", "purpose": "交互计算（可点性/提示/buildBoardUi 共享棋盘 UI 描述）", "last_updated": "2026-08-25" },
+      { "path": "js/ui/boardInteraction.js", "purpose": "玩家棋盘点击处理（M1/M2/M3/M5 共用，工厂注入 getState/getUi/dispatch/renderAll）", "last_updated": "2026-08-25" },
+      { "path": "js/solo/soloScript.js", "purpose": "M5 脚本对手：6 张固定目标卡 + 确定性剧本（纯函数）", "last_updated": "2026-08-25" },
+      { "path": "js/spectate/spectate.js", "purpose": "M4 SpectateController：回合调度 / 自动手动 / 速度档位 / 回放", "last_updated": "2026-08-25" },
+      { "path": "server/server.js", "purpose": "Socket.IO 联机服务端入口：静态托管 + Socket.IO", "last_updated": "2026-08-25" },
+      { "path": "public/cards/*.jpg", "purpose": "18 张本地卡图（256px JPEG，全副约 340KB），getArtUrl 返回相对路径 cards/{id}.jpg", "last_updated": "2026-08-25" },
+      { "path": "tools/inline-build.mjs", "purpose": "构建后内联 JS/CSS 到 dist/index.html（可双击离线运行）", "last_updated": "2026-08-25" }
+    ],
+    "architecture": "依赖方向仅 ui→core（只读状态、派发动作）；core 纯逻辑不下探 DOM；net 只依赖 core 协议与状态机；server 复用 core 不被反向依赖；禁止循环依赖。状态快照可序列化。M3 主机权威：服务端复用 stateMachine 校验并广播，本地客户端不自行推进。部署：source 分支不跟踪 dist/，产物由 gh-pages 分支独家托管。"
+  },
+  "patterns": [
+    "卡牌数据唯一数据源 js/core/cards.js；状态一律不可变更新（structuredClone）",
+    "纯渲染 render.js 输入 (state,ui,handlers) 输出 DOM；交互计算 interaction.js 为纯函数",
+    "UI→core 只读状态、派发动作；core 不 import ui/net/server",
+    "控制器用工厂注入解耦：createBoardInteraction({getState,getUi,dispatch,renderAll}) 供多模式共用",
+    "确定性随机 rng.js 注入种子，支持种子复现与回放导出/恢复",
+    "M4 观战与 M5 Solo 复用 #game 对局页内嵌面板，避免重复 DOM 与 ID 冲突",
+    "AI（含 Solo 脚本）决策与玩家走同一 action 接口，不偷看状态",
+    "卡图一律本地方案：public/cards/{id}.jpg + getArtUrl 返回相对路径，与网络解耦"
+  ],
+  "recent_changes": [
+    { "date": "2026-08-26", "change": "修复一键启动 bat 双击无反应（根因：bat 为 UTF-8 无BOM，cmd 按 GBK 读取致中文行被拆成多条命令→解析崩坏）；两 bat 重编码为 GBK(CP936) 无BOM；并用新源码 npm run build 重建 dist，使此前未提交的 MIN_SMALL_TOPS=4 与难度固定分段真正生效，解决'开局<3个0-1浅滩'与'卡背0-1但翻开不符'（2000 种子诊断 0 例）。补 difficultyRange 单测锁定不变式，137 测试全绿。", "impact": "一键启动本地/联网游戏.bat(GBK)；dist 重建(main 忽略不追踪)；可双击游玩修复后版本" },
+    { "date": "2026-08-25", "change": "本轮维护：①已钓鱼全部可点击查看详情（含无能力鱼、已横置能力鱼），能力选目标时仍优先当目标；②卡图 512→256px，总量 1200→340KB，卡面 <img> 加 lazy+async；③初始易钓顶牌 MIN_SMALL_TOPS 3→4（实测 5000 种子稳定 4-5 张强度 0）；④卡背难度区间改为固定分段（0→0-1，1/2→1-2，3/4/5→3-5）；⑤阶段按钮（跳过/确认抽牌/清空重选/取消放回）统一定位于 .dc-ctx（抽出牌下方）；⑥PC(≥861px) 浅滩卡 118→132px、间距 10→6px。用户要求【取消维护 docs/PROJECT_NOTE.md】，改由本 project_note.json 承接项目状态。", "impact": "js/ui/render.js、main.js、soloUI.js、css/cards|board|responsive、js/core/gameState.js、public/cards；135 测试全绿，生成 PROJECT_NOTE 迁移快照" },
+    { "date": "2026-08-28", "change": "部署 v0.7.0 与构建产物追踪清理：main(源码)→gh-pages(产物+cards/)；git rm -r --cached dist 移除索引残留，改 .gitignore 只影响未跟踪文件。", "impact": "main 分支完全忽略 dist/；部署流程 = 源分支 build → worktree 替换 index.html+cards/ → 提交推送 → worktree remove" },
+    { "date": "2026-08-28", "change": "批量维护 0.7.0：卡图压缩至 512px；卡尺寸 118×177；开局确定性交换保证≥3 易钓顶牌；数字前置；卡面全幅透明文字；卡牌详情弹窗；空浅滩放回修复；移动端跳过按钮下移。", "impact": "135 测试全绿；card-size-preview.html 为临时预览工具" },
+    { "date": "2026-08-25", "change": "批量修复与 UI 优化 0.6.0：抽牌选牌上限/取消交互；卡面上下 50% 布局；卡背难度区间徽章；分/钩实时分离显示；Solo 脚本回合调度；特色目标三态；平衡调整（分值>3 不供钩、钩数靠小鱼积累）。", "impact": "129→133 测试全绿" }
+  ],
+  "known_issues": [
+    { "id": 1, "description": "docs/ASSETS.md 仍写 'assets/ 为空（当前 UI 纯 CSS）'，与实际 public/cards/ 卡图不符；卡图所有权/许可/生成工具需补登记。", "status": "open", "priority": "medium" },
+    { "id": 2, "description": "card-size-preview.html 为临时预览文件（含尺寸滑块），定稿后可移除或保留为工具。", "status": "open", "priority": "low" }
+  ],
+  "gotchas": [
+    "钩子机构：难度(strength=所需钩)与产出(hooks=提供钩)必须分离，小鱼 strength=0/hooks=1；分值>3 的大鱼不供钩（防滚雪球）",
+    "AI 放回优先非来源浅滩以避免埋住可钓顶牌；放回目标须排除满堆(≥3)",
+    "可钓性(顶/次顶)是 AI 抽牌主导信号；次顶牌可钓需 from=[i,i] 连抽同一浅滩两格",
+    "UI 测试必须在设置 DOM 后动态 import 前端模块，否则 modal.js 在 DOM 就绪前 document 为 null",
+    "单机交付必须 npm run build 内联为可双击 dist/index.html（file:// 下 ESM 受 CORS 限制）",
+    "卡图须本地方案并连 cards/ 一起提交 gh-pages，线上才不缺图",
+    "渲染层凡'可点但无天然子元素可绑'的实体（如空浅滩）须给容器本身绑点击并自测",
+    "全幅卡面信息层必须显式定位(absolute)而非依赖 flex；文字用 text-shadow+描边保证可读",
+    ".gitignore 只影响未跟踪文件；改它不能清除已跟踪文件，须先 git rm --cached。构建产物 main 不跟踪、gh-pages 独家部署",
+    "任何'玩家动作推进到对方回合'的控制器，dispatch 后须检查是否轮到脚本并就绪调度",
+    "阶段按钮已统一定位在 .dc-ctx（抽出牌下方），改动其选择器/文案须同步 main.test.js 与 soloUI.test.js"
+    ,"一键启动*.bat 必须用 GBK(CP936)、无 BOM 保存；用 UTF-8 编辑器改动后不重编码会致 cmd 解析崩坏（双击无反应/闪退）"
+  ],
+  "api_details": {
+    "endpoints": [
+      { "path": "socket (MSG.ACTION)", "method": "emit", "params": "{ type: ACTION.*, ...payload }", "response": "服务端 stateMachine 校验；合法广播新 state，非法回 action_rejected", "notes": "M3 主机权威，本地客户端不推进" },
+      { "path": "socket (MSG.STATE_SYNC)", "method": "server→client", "params": "{ state, players }", "response": "客户端 game.state = payload.state 并 renderAll", "notes": "断线托管经 reconnect 发 state" },
+      { "path": "HTTP 静态托管 + Socket.IO", "method": "GET", "params": "/, /socket.io", "response": "express.static 托管 dist 产物 + socket.io", "notes": "联机需 cloudflared 暴露临时公网 URL" }
+    ]
+  },
+  "pending_tasks": [
+    { "id": 1, "task": "修正 docs/ASSETS.md 的 'assets/ 为空' 描述，并补卡图所有权/许可/生成工具登记到 ASSETS.md。", "priority": "medium" }
+  ]
+}

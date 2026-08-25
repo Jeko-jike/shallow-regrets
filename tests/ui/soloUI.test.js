@@ -90,7 +90,7 @@ describe('M5 Solo 挑战', () => {
         (b) => b.dataset.shoal !== backs[0].dataset.shoal
       );
       if (other && $$('#shoalsRow .shoal-badge').length < 2) click(other);
-      clickText('#actionBar .btn', '确认抽牌');
+      clickText('.dc-ctx .btn', '确认抽牌');
       // 3) 钓走/放回：循环处理抽出牌直到玩家回合结束
       let guard = 0;
       while (c.isPlayerTurn() && c.state.phase !== 'gameOver' && guard++ < 10) {

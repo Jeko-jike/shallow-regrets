@@ -88,7 +88,22 @@ shallow-regrets/
    - 解决：测试内先 `document.body.innerHTML = html`，再在 `beforeAll` 中动态 `await import(...)`。
    - 约定：**所有 UI 测试必须在设置 DOM 后动态导入前端模块**。
 
-5. **Vite 构建产物不可双击**
+5. **AI 抽牌死锁：次顶牌永远挖不到**
+   - 现象：M4 观战 seed=6 不终局，AI 每回合抽两张不可钓的大鱼再放回，无限循环。
+   - 原因：`chooseDrawAction` 对"顶牌/次顶牌可钓"只 +10/+6 分（小量级），且 `from` 每个浅滩只抽 1 张 → 次顶牌即使"可钓加分"也永远埋在顶牌下，抽出来全是不可钓大鱼。
+   - 解决：把"可钓的顶牌/次顶牌"改为绝对优先（+100），且当顶牌不可钓、次顶牌可钓时，`from=[i,i]` 连抽同一浅滩两张真正挖到次顶牌。
+   - 约定：**难易度（strength）与产钩（hooks）分离后，可钓性必须成为 AI 抽牌/放回的主导信号**；任何"次顶牌收益"若无法被触及就毫无意义。
+   - 回归：`tests/spectate/spectate.test.js` 覆盖 40 个种子 + seed=6 现于 85 步内终局。
+
+6. **放回目标需排除满堆（≥3）**
+   - 规则层新增：已有 3 张的浅滩不再作为放回目标（`getLegalThrowTargets` 首行 `if (s.length >= CARDS_PER_SHOAL) return;`）。
+   - 同步：放回相关测试状态改为"未满堆（2 张）"，避免构造 6×3 全满状态导致无合法放回目标。
+
+7. **Solo noFoul 目标三态**
+   - 全局特色目标"全程未钓污秽"开局 0 条不得算达成，否则永远亮灯。
+   - `getLiveGoals` 每项目标带三态 `status: progress | failed | done`；noFoul 仅终局且全程无污秽为 done，一钓污秽即 failed。
+
+8. **Vite 构建产物不可双击**
    - 现象：`vite build` 默认输出分离的 CSS/JS 文件，`file://` 下 ES module 因 CORS 无法加载。
    - 解决：`tools/inline-build.mjs` 把 JS/CSS 内联进 `dist/index.html`；`package.json` 的 `build` 脚本为 `vite build && node tools/inline-build.mjs`。
    - 约定：**单机交付必须走 `npm run build` 生成可双击的 dist/index.html**。
@@ -147,7 +162,7 @@ shallow-regrets/
 
 下一步计划（收尾）：
 1. ✅ 补齐文档：README.md、docs/ARCHITECTURE.md、docs/ASSETS.md、docs/ISSUE_TEMPLATE.md、tools/README.md，并更新 CHANGELOG 至 0.5.0。
-2. ✅ 终验：`npm test` 全绿（129 例 / 16 文件）、`npm run build` 后 dist/index.html 完全内联可双击、联机服务验证（注意：本机 3000 端口可能被其它服务占用，用 `PORT=3001 npm run serve` 换端口）。
+2. ✅ 终验：`npm test` 全绿（133 例 / 16 文件）、`npm run build` 后 dist/index.html 完全内联可双击、联机服务验证（注意：本机 3000 端口可能被其它服务占用，用 `PORT=3001 npm run serve` 换端口）。
 
 ## 五、关键决策记录（ADR 简版）
 

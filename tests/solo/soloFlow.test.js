@@ -6,6 +6,7 @@ import { SoloController } from '../../js/solo/soloFlow.js';
 import { SCRIPT_NAME } from '../../js/solo/soloScript.js';
 import { PHASE } from '../../js/core/stateMachine.js';
 import { chooseAction } from '../../js/ai/heuristicAI.js';
+import { CARD_BY_ID } from '../../js/core/cards.js';
 
 /** 驱动一局到终局：脚本回合用 runScriptAction，玩家回合用启发式 AI 代替（仅测试用） */
 function runToEnd(seed, first = 'player') {
@@ -92,6 +93,31 @@ describe('SoloController: 结算评价', () => {
     expect(typeof goals.beatScript.text).toBe('string');
     expect(typeof goals.grabbedTargets.text).toBe('string');
     expect(goals.grabbedTargets.text).toMatch(/\/3$/);
+  });
+
+  it('回归：开局时 noFoul 目标为"进行中"而非自动达成', () => {
+    const c = new SoloController({ playerName: '你', seed: 42, first: 'player' });
+    const goals = c.getLiveGoals();
+    expect(goals.noFoul.done).toBe(false);
+    expect(goals.noFoul.status).toBe('progress');
+    // 钓到污秽鱼后立即转失败
+    c.state.players[c.playerIndex].caught = ['jellyfish'];
+    const failed = c.getLiveGoals();
+    expect(failed.noFoul.status).toBe('failed');
+    expect(failed.noFoul.done).toBe(false);
+    // 全部目标带三态 status 字段
+    for (const g of Object.values(c.getLiveGoals())) {
+      expect(['progress', 'failed', 'done']).toContain(g.status);
+    }
+  });
+
+  it('终局时 noFoul 仅在全程无污秽时达成（与结算评价一致）', () => {
+    const c = runToEnd(42);
+    const goals = c.getLiveGoals();
+    const foulCount = c.state.players[c.playerIndex].caught.filter((id) => CARD_BY_ID[id].type === 'foul').length;
+    expect(goals.noFoul.status).toBe(foulCount > 0 ? 'failed' : 'done');
+    expect(goals.noFoul.done).toBe(foulCount === 0);
+    expect(c.getEvaluation().goals.noFoul).toBe(foulCount === 0);
   });
 
   it('星级与目标达成数一致（0-4 星）', () => {

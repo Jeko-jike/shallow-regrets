@@ -163,6 +163,18 @@
   font-size: 14px;
 }
 
+.caught-panel .cp-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.caught-panel .cp-score {
+  color: var(--gold);
+  font-weight: 700;
+}
+
 .caught-panel .cp-hooks {
   font-size: 13px;
   color: var(--text-dim);
@@ -186,11 +198,16 @@
 }
 
 .caught-panel .cp-cards .card-front .cf-points {
-  font-size: 16px;
+  font-size: 13px;
 }
 
-.caught-panel .cp-cards .card-front .cf-strength {
-  font-size: 13px;
+.caught-panel .cp-cards .card-front .cf-need,
+.caught-panel .cp-cards .card-front .cf-give {
+  font-size: 10px;
+}
+
+.caught-panel .cp-cards .card-front .cf-info {
+  padding: 4px 5px 5px;
 }
 
 /* 操作区 */
@@ -496,6 +513,12 @@
   background: rgba(45, 212, 191, 0.08);
 }
 
+.solo-goal.failed {
+  color: var(--text);
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.08);
+}
+
 .solo-goal-mark {
   font-weight: 800;
   color: var(--text-faint);
@@ -503,6 +526,10 @@
 
 .solo-goal.done .solo-goal-mark {
   color: var(--accent);
+}
+
+.solo-goal.failed .solo-goal-mark {
+  color: var(--danger);
 }
 
 .solo-goal-val {
@@ -514,6 +541,10 @@
 
 .solo-goal.done .solo-goal-val {
   color: var(--accent);
+}
+
+.solo-goal.failed .solo-goal-val {
+  color: var(--danger);
 }
 
 .solo-intent {

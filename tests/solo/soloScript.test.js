@@ -7,15 +7,15 @@ import { makeState, makePlayer } from '../helpers.js';
 import { CARD_BY_ID } from '../../js/core/cards.js';
 import { PHASE } from '../../js/core/stateMachine.js';
 
-/** 构造 6 个非空浅滩（顶牌均为 strength>=1 的大阴影，保证放回目标合法） */
+/** 构造 6 个非空且未满（2 张）的浅滩（顶牌均为 strength>=1 的大阴影，保证放回目标合法） */
 function fullShoals() {
   return [
-    ['stingray', 'sardine', 'clownfish'],
-    ['lamprey', 'clownfish', 'pufferfish'],
-    ['dayOctopus', 'pufferfish', 'lanternfish'],
-    ['barracuda', 'lanternfish', 'jellyfish'],
-    ['morayEel', 'jellyfish', 'foot'],
-    ['giantOctopus', 'foot', 'dayOctopus'],
+    ['stingray', 'sardine'],
+    ['lamprey', 'clownfish'],
+    ['dayOctopus', 'pufferfish'],
+    ['barracuda', 'lanternfish'],
+    ['morayEel', 'jellyfish'],
+    ['giantOctopus', 'foot'],
   ];
 }
 

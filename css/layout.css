@@ -171,8 +171,28 @@
   font-size: 15px;
 }
 
-.player-chip .p-hooks {
+.player-chip .p-stats {
   margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.player-chip .p-score {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.player-chip .p-score .score-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-right: 3px;
+}
+
+.player-chip .p-hooks {
   font-size: 13px;
   color: var(--text-dim);
   display: flex;

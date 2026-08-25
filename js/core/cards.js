@@ -11,8 +11,9 @@
  * Mermaid、Eye Blob 等为真实卡名）；具体数值为平衡性设计。
  * 能力类型见 js/core/abilities.js。
  *
- * 钩子机制（官方规则）：钓到鱼后，其 hooks 计入你的当前钩子数；
- * 小鱼（strength 0）开局易钓且提供 1 钩，用于逐步钓起更强的大鱼。
+ * 钩子机制（平衡性调整）：钓到鱼后，其 hooks 计入你的当前钩子数；
+ * 仅分值 ≤ 3 的鱼提供钩数（小鱼/中型鱼各 1 钩），分值 > 3 的大鱼不提供钩数——
+ * 大鱼为"终局渔获"，钩数只能靠小鱼逐步积累，避免滚雪球。
  */
 
 /**
@@ -38,21 +39,21 @@ export const CARDS = [
   { id: 'jellyfish', name: '水母', nameEn: 'Jellyfish', points: 1, strength: 0, hooks: 1, type: 'foul', ability: null, art: 'jellyfish' },
   { id: 'foot', name: '怪脚', nameEn: 'The Nasty Foot', points: -1, strength: 0, hooks: 1, type: 'foul', ability: null, art: 'foot' },
 
-  // —— 中型鱼（strength 1-2）——
+  // —— 中型鱼（strength 1-2；分值 ≤ 3 的提供 1 钩，分值 > 3 的不提供钩数）——
   { id: 'dayOctopus', name: '昼章鱼', nameEn: 'Day Octopus', points: 3, strength: 1, hooks: 1, type: 'fair', ability: 'swap_fish', art: 'dayOctopus' },
   { id: 'stingray', name: '魟鱼', nameEn: 'Whiptail Stingray', points: 3, strength: 1, hooks: 1, type: 'fair', ability: 'force_exhaust', art: 'stingray' },
   { id: 'lamprey', name: '七鳃鳗', nameEn: 'Lamprey', points: 3, strength: 1, hooks: 1, type: 'fair', ability: 'draw_extra', art: 'lamprey' },
-  { id: 'barracuda', name: '梭鱼', nameEn: 'Barracuda', points: 4, strength: 2, hooks: 2, type: 'fair', ability: null, art: 'barracuda' },
-  { id: 'morayEel', name: '海鳗', nameEn: 'Moray Eel', points: 4, strength: 2, hooks: 2, type: 'fair', ability: 'immunity', art: 'morayEel' },
-  { id: 'eyeBlob', name: '眼球怪', nameEn: 'Eye Blob', points: 4, strength: 2, hooks: 2, type: 'foul', ability: 'peek_shoal', art: 'eyeBlob' },
-  { id: 'mermaid', name: '美人鱼', nameEn: 'Mermaid', points: 4, strength: 2, hooks: 2, type: 'foul', ability: 'force_exhaust', art: 'mermaid' },
-  { id: 'giantOctopus', name: '巨型章鱼', nameEn: 'Giant Octopus', points: 5, strength: 2, hooks: 2, type: 'fair', ability: 'swap_fish', art: 'giantOctopus' },
+  { id: 'barracuda', name: '梭鱼', nameEn: 'Barracuda', points: 4, strength: 2, hooks: 0, type: 'fair', ability: null, art: 'barracuda' },
+  { id: 'morayEel', name: '海鳗', nameEn: 'Moray Eel', points: 4, strength: 2, hooks: 0, type: 'fair', ability: 'immunity', art: 'morayEel' },
+  { id: 'eyeBlob', name: '眼球怪', nameEn: 'Eye Blob', points: 4, strength: 2, hooks: 0, type: 'foul', ability: 'peek_shoal', art: 'eyeBlob' },
+  { id: 'mermaid', name: '美人鱼', nameEn: 'Mermaid', points: 4, strength: 2, hooks: 0, type: 'foul', ability: 'force_exhaust', art: 'mermaid' },
+  { id: 'giantOctopus', name: '巨型章鱼', nameEn: 'Giant Octopus', points: 5, strength: 2, hooks: 0, type: 'fair', ability: 'swap_fish', art: 'giantOctopus' },
 
-  // —— 大鱼（strength 3-5，需积累钩数）——
-  { id: 'oarfish', name: '皇带鱼', nameEn: 'Oarfish', points: 6, strength: 3, hooks: 3, type: 'fair', ability: 'draw_extra', art: 'oarfish' },
-  { id: 'eversquid', name: '永恒乌贼', nameEn: 'Eversquid', points: 6, strength: 3, hooks: 3, type: 'foul', ability: 'draw_extra', art: 'eversquid' },
-  { id: 'kelpie', name: '凯尔派', nameEn: 'Kelpie', points: 7, strength: 4, hooks: 4, type: 'foul', ability: 'shuffle_shoals', art: 'kelpie' },
-  { id: 'kraken', name: '克拉肯', nameEn: 'Kraken', points: 8, strength: 5, hooks: 5, type: 'fair', ability: 'shuffle_shoals', art: 'kraken' },
+  // —— 大鱼（strength 3-5，需积累钩数；分值 > 3 不提供钩数，为终局渔获）——
+  { id: 'oarfish', name: '皇带鱼', nameEn: 'Oarfish', points: 6, strength: 3, hooks: 0, type: 'fair', ability: 'draw_extra', art: 'oarfish' },
+  { id: 'eversquid', name: '永恒乌贼', nameEn: 'Eversquid', points: 6, strength: 3, hooks: 0, type: 'foul', ability: 'draw_extra', art: 'eversquid' },
+  { id: 'kelpie', name: '凯尔派', nameEn: 'Kelpie', points: 7, strength: 4, hooks: 0, type: 'foul', ability: 'shuffle_shoals', art: 'kelpie' },
+  { id: 'kraken', name: '克拉肯', nameEn: 'Kraken', points: 8, strength: 5, hooks: 0, type: 'fair', ability: 'shuffle_shoals', art: 'kraken' },
 ];
 
 /** id → 卡牌 的索引，便于 O(1) 查找 */

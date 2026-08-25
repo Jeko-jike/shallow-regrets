@@ -55,7 +55,12 @@ export class SoloController {
     return true;
   }
 
-  /** 实时特色目标进度（对局中展示；终局时与 getEvaluation 一致），见 RULES.md 11.6 */
+  /**
+   * 实时特色目标进度（对局中展示；终局时与 getEvaluation 一致），见 RULES.md 11.6。
+   * 每项目标带三态 status：progress（进行中）/ failed（已失败）/ done（已达成）。
+   * 注意 noFoul 为"全程型"目标：开局 0 条污秽不算达成，只有终局且全程无污秽才算；
+   * 一旦钓到污秽立即转 failed。
+   */
   getLiveGoals() {
     const s = this.state;
     const me = s.players[this.playerIndex];
@@ -64,11 +69,18 @@ export class SoloController {
     const scriptScore = results.find((r) => r.playerIndex === this.scriptIndex).score;
     const grabbed = me.caught.filter((id) => TARGETS.includes(id)).length;
     const foulCount = me.caught.filter((id) => CARD_BY_ID[id].type === 'foul').length;
+    const over = s.phase === PHASE.GAME_OVER;
+    const krakenCaught = me.caught.includes('kraken');
+    const beat = myScore > scriptScore;
     return {
-      beatScript: { done: myScore > scriptScore, text: `${myScore} > ${scriptScore}` },
-      caughtKraken: { done: me.caught.includes('kraken'), text: me.caught.includes('kraken') ? '已钓到' : '未钓到' },
-      noFoul: { done: foulCount === 0, text: foulCount === 0 ? '无污秽' : `钓到 ${foulCount} 条污秽` },
-      grabbedTargets: { done: grabbed >= 3, text: `${grabbed}/3` },
+      beatScript: { done: beat, status: beat ? 'done' : over ? 'failed' : 'progress', text: `${myScore} > ${scriptScore}` },
+      caughtKraken: { done: krakenCaught, status: krakenCaught ? 'done' : over ? 'failed' : 'progress', text: krakenCaught ? '已钓到' : '未钓到' },
+      noFoul: {
+        done: over && foulCount === 0,
+        status: foulCount > 0 ? 'failed' : over ? 'done' : 'progress',
+        text: foulCount > 0 ? `已钓 ${foulCount} 条污秽` : over ? '全程无污秽' : '暂无污秽',
+      },
+      grabbedTargets: { done: grabbed >= 3, status: grabbed >= 3 ? 'done' : over ? 'failed' : 'progress', text: `${grabbed}/3` },
     };
   }
 

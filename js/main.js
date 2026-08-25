@@ -143,12 +143,16 @@ function onShoalClick(i) {
   const ui = game.ui;
 
   if (s.phase === PHASE.DRAW) {
+    const required = getRequiredDrawCount(s);
     const count = ui.selectedShoals.filter((x) => x === i).length;
     const max = Math.min(2, s.shoals[i].length); // 同一浅滩最多抽其现有张数
-    if (count >= max) {
+    if (count > 0 && (count >= max || ui.selectedShoals.length >= required)) {
+      // 已选浅滩在"选满"时点击 = 取消该浅滩全部选择
       ui.selectedShoals = ui.selectedShoals.filter((x) => x !== i);
-    } else {
+    } else if (ui.selectedShoals.length < required && count < max) {
       ui.selectedShoals.push(i);
+    } else {
+      modal.showToast(`本回合需抽 ${required} 张，已选 ${ui.selectedShoals.length} 张，点击已选浅滩可取消`, 'info');
     }
     renderAll();
     return;
@@ -273,6 +277,13 @@ function onConfirmDraw() {
   dispatch({ type: ACTION.DRAW, from });
 }
 
+/** 清空本回合已选浅滩（抽牌阶段一键重选） */
+function onClearDraw() {
+  if (game.ui.selectedShoals.length === 0) return;
+  game.ui.selectedShoals = [];
+  renderAll();
+}
+
 function onCatch(cardId) {
   dispatch({ type: ACTION.CATCH, cardId });
 }
@@ -338,6 +349,7 @@ function renderAll() {
   render.renderActionBar($('actionBar'), s, ui, {
     onPassAbilities,
     onConfirmDraw,
+    onClearDraw,
     onCancelThrow,
   });
   render.renderStatus($('statusLine'), s, ui);

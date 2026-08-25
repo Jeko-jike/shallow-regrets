@@ -8,6 +8,8 @@ import { getDrawableShoals, getRequiredDrawCount, getCatchableDrawn, getLegalThr
 
 /**
  * 抽牌阶段交互：可点浅滩、选择计数、能否确认。
+ * 规则：总选择数上限 = 本回合应抽数（required）；同一浅滩最多抽 2 张；
+ *       点击已选浅滩在"选满"（总数或单浅滩达上限）时为取消语义。
  * @returns {{required:number, drawable:number[], selectCount:Record<number,number>, total:number, canConfirm:boolean, hint:string}}
  */
 export function getDrawInteraction(state, ui) {
@@ -22,7 +24,10 @@ export function getDrawInteraction(state, ui) {
     selectCount,
     total,
     canConfirm: total === required,
-    hint: total === 0 ? `请选择 ${required} 个浅滩抽牌` : `已选 ${total}/${required}，可重复点同一浅滩`,
+    hint:
+      total === 0
+        ? `请选择 ${required} 张牌：点击浅滩加选（同一浅滩最多 2 张）`
+        : `已选 ${total}/${required} · 点击已选浅滩可取消`,
   };
 }
 
@@ -63,7 +68,9 @@ export function buildBoardUi(state, ui, { canInteract, statusText }) {
       if (!canInteract) return false;
       if (phase === PHASE.DRAW && drawInter) {
         const count = ui.selectedShoals.filter((x) => x === i).length;
-        return drawInter.drawable.includes(i) && count < Math.min(2, state.shoals[i].length);
+        // 已选浅滩始终可点（取消/循环）；未选浅滩仅在总数未达上限时可加选
+        if (count > 0) return drawInter.drawable.includes(i);
+        return drawInter.drawable.includes(i) && drawInter.total < drawInter.required;
       }
       if (phase === PHASE.CATCH && ui.throwCardId != null) {
         return getLegalThrowTargets(state).includes(i);
@@ -83,6 +90,7 @@ export function buildBoardUi(state, ui, { canInteract, statusText }) {
     drawnHint: catchInter ? catchInter.hint : phase === PHASE.DRAW ? drawInter.hint : '',
     mustCatchFirst: catchInter ? catchInter.mustCatchFirst : false,
     drawCanConfirm: drawInter ? drawInter.canConfirm : false,
+    drawSelectedTotal: drawInter ? drawInter.total : 0,
     throwCardId: ui.throwCardId,
     fishClickable: (i, cardId) => {
       if (!canInteract) return false;

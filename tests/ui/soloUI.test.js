@@ -73,6 +73,58 @@ describe('M5 Solo 挑战', () => {
     }
   });
 
+  it('回归：玩家回合结束后自动轮到脚本回合（脚本意图与日志显示）', async () => {
+    vi.useFakeTimers();
+    try {
+      soloUI.startSolo({ playerName: '你', seed: 42, first: 'player' });
+      const c = soloUI.__getController();
+      expect($('#soloIntent').textContent).toContain('等待你的行动');
+      // —— 通过 UI 驱动一个完整玩家回合 ——
+      // 1) 能力阶段：跳过
+      clickText('#actionBar .btn', '跳过能力阶段');
+      // 2) 抽牌阶段：点两个不同浅滩（每浅滩一张）后确认
+      const backs = $$('.shoal-stack .card-back.selectable');
+      expect(backs.length).toBeGreaterThan(0);
+      click(backs[0]);
+      const other = $$('.shoal-stack .card-back.selectable').find(
+        (b) => b.dataset.shoal !== backs[0].dataset.shoal
+      );
+      if (other && $$('#shoalsRow .shoal-badge').length < 2) click(other);
+      clickText('#actionBar .btn', '确认抽牌');
+      // 3) 钓走/放回：循环处理抽出牌直到玩家回合结束
+      let guard = 0;
+      while (c.isPlayerTurn() && c.state.phase !== 'gameOver' && guard++ < 10) {
+        const catchBtn = $$('.dc-actions .btn').find((b) => b.textContent === '钓走' && !b.disabled);
+        if (catchBtn) {
+          click(catchBtn);
+          continue;
+        }
+        const throwBtn = $$('.dc-actions .btn').find((b) => b.textContent === '放回' && !b.disabled);
+        if (throwBtn) {
+          click(throwBtn);
+          const target = $('.shoal-stack .card-back.selectable');
+          if (target) {
+            click(target);
+            continue;
+          }
+        }
+        break;
+      }
+      // 玩家回合结束 → 脚本回合被自动调度（意图区不再是等待文案）
+      expect(c.isScriptTurn()).toBe(true);
+      expect($('#soloIntent').textContent).not.toContain('等待你的行动');
+      // 脚本按节奏行动并写入日志
+      let wait = 0;
+      while ($$('#soloLog .sp-log-item').length === 0 && wait++ < 30) {
+        await vi.advanceTimersByTimeAsync(700);
+      }
+      expect($$('#soloLog .sp-log-item').length).toBeGreaterThan(0);
+      expect($$('#soloLog .sp-log-item')[0].querySelector('.sp-li-who').textContent).toContain('渔夫与青蛙');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('结算：特色目标与评价展示', () => {
     soloUI.startSolo({ playerName: '你', seed: 42, first: 'player' });
     const c = soloUI.__getController();

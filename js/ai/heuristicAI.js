@@ -123,7 +123,11 @@ function buildAbilityAction(state, card, opp) {
   }
 }
 
-/** 抽牌阶段：优先选"顶牌或次顶牌可钓且价值高"的浅滩 */
+/**
+ * 抽牌阶段：优先选"顶牌或次顶牌可钓且价值高"的浅滩。
+ * 顶牌不可钓而次顶牌可钓时连抽同一浅滩两张（from=[i,i]）以触及次顶牌，
+ * 否则次顶牌永远埋在顶牌之下、对局会陷入"抽两张不可钓大鱼再放回"的死循环。
+ */
 function chooseDrawAction(state) {
   const required = getRequiredDrawCount(state);
   const drawable = getDrawableShoals(state);
@@ -135,13 +139,26 @@ function chooseDrawAction(state) {
     const top = CARD_BY_ID[shoal[0]];
     const second = shoal.length > 1 ? CARD_BY_ID[shoal[1]] : null;
     let score = aiCardValue(top, state, me);
-    if (hooks >= top.strength) score += 10;
-    else if (second && hooks >= second.strength) score += 6; // 抽掉顶牌即可钓到次顶牌
+    // 可钓的顶牌/次顶牌绝对优先：保证每回合尽可能钓到鱼、对局总能推进
+    if (hooks >= top.strength) score += 100;
+    else if (second && hooks >= second.strength) score += 100;
     return { i, score };
   });
   scored.sort((a, b) => b.score - a.score);
 
-  const from = scored.slice(0, required).map((s) => s.i);
+  const from = [];
+  for (const { i } of scored) {
+    if (from.length >= required) break;
+    const shoal = state.shoals[i];
+    const top = CARD_BY_ID[shoal[0]];
+    const second = shoal.length > 1 ? CARD_BY_ID[shoal[1]] : null;
+    const dig = hooks < top.strength && second && hooks >= second.strength;
+    if (dig && required - from.length >= 2 && shoal.length >= 2) {
+      from.push(i, i);
+    } else {
+      from.push(i);
+    }
+  }
   return { type: 'DRAW', from };
 }
 

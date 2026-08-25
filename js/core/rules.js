@@ -3,12 +3,13 @@
  * 全部为纯函数，输入状态快照，输出判定结果，可 100% 单测。
  *
  * 放回浅滩规则（以官方权威来源 thefamilygamers.com/shallow-regrets/ 为准）：
+ *  - 浅滩上限 3 张：已有 3 张的浅滩不可作为放回目标；
  *  - 若有空浅滩，必须放回空浅滩；
  *  - 否则应盖在"大阴影"（顶牌 strength>=1）之上；
  *  - 除非所有浅滩顶牌都是小阴影（strength<=0），否则不能盖小阴影。
  */
 import { CARD_BY_ID } from './cards.js';
-import { getHooks, getTotalCaught } from './gameState.js';
+import { getHooks, getTotalCaught, CARDS_PER_SHOAL } from './gameState.js';
 
 /** 浅滩顶牌是否为"小阴影"（strength<=0 的小鱼） */
 export function isSmallShadow(shoal) {
@@ -26,16 +27,18 @@ export function getCatchableDrawn(state) {
   return state.drawn.filter((id) => canCatch(state, p, id));
 }
 
-/** 合法放回目标浅滩索引列表（按官方放回规则） */
+/** 合法放回目标浅滩索引列表（按官方放回规则；满堆 ≥3 张不可放回） */
 export function getLegalThrowTargets(state) {
   const empty = [];
   const large = [];
   const all = [];
   state.shoals.forEach((s, i) => {
+    if (s.length >= CARDS_PER_SHOAL) return; // 浅滩上限 3 张，满堆不可放回
     all.push(i);
     if (s.length === 0) empty.push(i);
     else if (!isSmallShadow(s)) large.push(i);
   });
+  // 抽出的牌必然腾出空间，all 理论上不为空；防御性兜底返回全部不满堆
   if (empty.length > 0) return empty;
   if (large.length > 0) return large;
   return all;

@@ -55,12 +55,12 @@ describe('rules.js 规则引擎', () => {
     it('无空浅滩时只能盖大阴影（顶牌 strength>=1）', () => {
       const state = makeState();
       state.shoals = [
-        ['sardine', 'lamprey', 'kraken'], // 0 小
-        ['clownfish', 'oarfish', 'kelpie'], // 0 小
-        ['barracuda', 'lamprey', 'dayOctopus'], // 2 大
-        ['pufferfish', 'eversquid', 'stingray'], // 0 小
-        ['jellyfish', 'morayEel', 'giantOctopus'], // 0 小
-        ['foot', 'dayOctopus', 'lamprey'], // 0 小
+        ['sardine', 'lamprey'], // 顶牌 0 小
+        ['clownfish', 'oarfish'], // 顶牌 0 小
+        ['barracuda', 'lamprey'], // 顶牌 2 大
+        ['pufferfish', 'eversquid'],
+        ['jellyfish', 'morayEel'],
+        ['foot', 'dayOctopus'],
       ];
       expect(getLegalThrowTargets(state)).toEqual([2]);
     });
@@ -68,14 +68,28 @@ describe('rules.js 规则引擎', () => {
     it('所有浅滩顶牌都是小阴影时可放回任意浅滩', () => {
       const state = makeState();
       state.shoals = [
-        ['sardine', 'lamprey', 'kraken'],
-        ['clownfish', 'oarfish', 'kelpie'],
-        ['pufferfish', 'lamprey', 'dayOctopus'],
-        ['jellyfish', 'eversquid', 'stingray'],
-        ['foot', 'morayEel', 'giantOctopus'],
-        ['lanternfish', 'barracuda', 'lamprey'],
+        ['sardine', 'lamprey'],
+        ['clownfish', 'oarfish'],
+        ['pufferfish', 'dayOctopus'],
+        ['jellyfish', 'stingray'],
+        ['foot', 'morayEel'],
+        ['lanternfish', 'barracuda'],
       ];
       expect(getLegalThrowTargets(state)).toEqual([0, 1, 2, 3, 4, 5]);
+    });
+
+    it('满堆（已有 3 张）的浅滩不可作为放回目标', () => {
+      const state = makeState();
+      state.shoals = [
+        ['barracuda', 'lamprey', 'dayOctopus'], // 满 3 张（顶牌为大阴影）
+        ['sardine', 'lamprey'], // 未满，顶牌小阴影
+        ['sardine', 'lamprey'],
+        ['sardine', 'lamprey'],
+        ['sardine', 'lamprey'],
+        ['sardine', 'lamprey'],
+      ];
+      // 唯一的大阴影浅滩已满 → 被排除，只能放回其余不满堆的小阴影浅滩
+      expect(getLegalThrowTargets(state)).toEqual([1, 2, 3, 4, 5]);
     });
   });
 
@@ -97,8 +111,9 @@ describe('rules.js 规则引擎', () => {
     });
 
     it('只要还有玩家能钓起任意剩余牌就不结束', () => {
+      // 新钩子机制：仅分值 ≤3 的鱼供钩（4 条小鱼 = 4 钩），恰好可钓起凯尔派（需 4 钩）
       const state = makeState({
-        players: [makePlayer(0, 'A', ['kraken']), makePlayer(1, 'B')], // A 有 5 钩
+        players: [makePlayer(0, 'A', ['sardine', 'clownfish', 'pufferfish', 'lamprey']), makePlayer(1, 'B')],
         shoals: [['kraken'], ['kelpie'], [], [], [], []],
       });
       expect(checkGameOver(state)).toBe(false);

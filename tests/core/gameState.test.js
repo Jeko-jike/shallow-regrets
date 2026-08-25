@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createInitialState, getHooks, getTotalCaught, NUM_SHOALS, CARDS_PER_SHOAL, TOTAL_CARDS } from '../../js/core/gameState.js';
-import { CARD_BY_ID } from '../../js/core/cards.js';
+import { CARD_BY_ID, CARDS } from '../../js/core/cards.js';
 
 describe('gameState.js 初始状态', () => {
   it('洗牌后分成 6 个浅滩，每个 3 张，共 18 张且不重复', () => {
@@ -34,14 +34,18 @@ describe('gameState.js 初始状态', () => {
     expect(getTotalCaught(state)).toBe(0);
   });
 
-  it('钩子机制：小鱼（strength 0）钓获提供 1 钩，大鱼提供其 strength 钩', () => {
+  it('钩子机制：仅分值 ≤3 的鱼提供钩数，大鱼（分值>3）不供钩（平衡性调整）', () => {
     const state = createInitialState({ seed: 1, playerNames: ['A', 'B'] });
     state.players[0].caught = ['sardine', 'clownfish']; // 1+1
     expect(getHooks(state, 0)).toBe(2);
-    state.players[0].caught = ['lamprey', 'barracuda', 'kraken']; // 1+2+5
-    expect(getHooks(state, 0)).toBe(8);
+    state.players[0].caught = ['lamprey', 'barracuda', 'kraken']; // 1 + 0 + 0
+    expect(getHooks(state, 0)).toBe(1);
     expect(CARD_BY_ID['sardine'].hooks).toBe(1);
     expect(CARD_BY_ID['sardine'].strength).toBe(0); // 难度与提供钩数分离
+    // 所有分值 > 3 的卡一律不提供钩数（大鱼为终局渔获，钩数靠小鱼积累）
+    for (const c of CARDS) {
+      if (c.points > 3) expect(c.hooks, `${c.id} 分值>3 但提供钩数`).toBe(0);
+    }
   });
 
   it('初始阶段为 ability，当前玩家为 0，回合为 1', () => {

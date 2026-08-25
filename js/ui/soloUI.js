@@ -70,8 +70,13 @@ export function startSolo(config) {
     getUi: () => uiState,
     dispatch: (action) => {
       const err = controller.dispatch(action);
-      if (err) modal.showToast(err, 'error');
-      return !err;
+      if (err) {
+        modal.showToast(err, 'error');
+        return false;
+      }
+      // 玩家动作若结束了玩家回合（如钓走/放回最后一张），立即调度脚本回合
+      if (controller.isScriptTurn()) runScript();
+      return true;
     },
     renderAll,
   });
@@ -83,6 +88,7 @@ export function startSolo(config) {
   $('soloPanel').style.display = '';
   $('soloLog').innerHTML = '';
   $('soloResult').style.display = 'none';
+  setIntent('等待你的行动…');
 
   renderTargets();
   showScreen('game');
@@ -168,18 +174,19 @@ function renderTargets() {
   });
 }
 
-/** 渲染特色目标实时进度 */
+/** 渲染特色目标实时进度（三态：进行中 ○ / 已失败 ✗ / 已达成 ✓） */
 function renderGoals() {
   const el = $('soloGoals');
   const goals = controller.getLiveGoals();
   el.innerHTML = '';
   GOAL_ITEMS.forEach(({ key, label }) => {
     const g = goals[key];
+    const state = g.done ? 'done' : g.status === 'failed' ? 'failed' : 'progress';
     const item = document.createElement('div');
-    item.className = 'solo-goal' + (g.done ? ' done' : '');
+    item.className = `solo-goal ${state}`;
     const mark = document.createElement('span');
     mark.className = 'solo-goal-mark';
-    mark.textContent = g.done ? '✓' : '○';
+    mark.textContent = state === 'done' ? '✓' : state === 'failed' ? '✗' : '○';
     const text = document.createElement('span');
     text.className = 'solo-goal-text';
     text.textContent = label;

@@ -12,6 +12,11 @@ export function getFoulCount(state, playerIndex) {
   return state.players[playerIndex].caught.filter((id) => CARD_BY_ID[id].type === 'foul').length;
 }
 
+/** 某玩家当前原始分（已钓卡 points 之和，不含污秽惩罚；对局中实时显示用） */
+export function getRawScore(state, playerIndex) {
+  return state.players[playerIndex].caught.reduce((sum, id) => sum + CARD_BY_ID[id].points, 0);
+}
+
 /** 某玩家最终得分（含污秽惩罚） */
 export function getPlayerScore(state, playerIndex) {
   const p = state.players[playerIndex];

@@ -131,6 +131,12 @@ shallow-regrets/
    - 解决：`cf-art-wrap` 用 `position:absolute; inset:0` 占满整卡；`cf-info` 用 `position:absolute; left/right/bottom:0; height:50%` 叠于卡面下半。文字可读靠 `text-shadow`（双层）+ `-webkit-text-stroke` 细描边，背景设 transparent。
    - 约定：全幅卡面渲染时，信息层必须显式定位（absolute）而非依赖 flex 流；改卡面结构后需在多种尺寸下验收文字可读性。
 
+13. **构建产物 dist 曾因"历史强制加入"而残留在 main 追踪里**
+   - 现象：`.gitignore` 第 5 行本来就有 `dist/`，但 `main` 仍追踪了 `dist/index.html`（早前 `git add -f` 或忽略规则建立前加入）；每轮重建后 `git status` 都会冒出一个 `M dist/index.html`。
+   - 原理：`.gitignore` 只影响**未跟踪**的新文件，对**已跟踪**文件无效；要使其被忽略必须先 `git rm --cached`。
+   - 处置（已做）：`git rm -r --cached dist` 仅从索引移除、保留磁盘文件，提交后 `main` 对 `dist/` 完全忽略，构建产物改由 `gh-pages` 分支独家部署。
+   - 约定：构建产物在源分支一律不跟踪；部署统一走 gh-pages worktree 流程；**改 .gitignore 不能清除已跟踪文件**，须先 `git rm --cached`。
+
 ## 三、任务日志
 
 ### 2026-08-28 · 批量维护：卡图/尺寸/开局/文本/卡面/详情/修复/移动端（0.7.0）
@@ -147,6 +153,14 @@ shallow-regrets/
   - 回归：`tests/ui/main.test.js` 新增空浅滩可点测试。
 - 移动端 UI：`跳过能力阶段` 按钮从操作条移至抽出牌区下方（玩家区上方），桌面端同步移动（`render.js` renderDrawn dc-skip + `board.css`），已同步测试选择器。
 - 测试 134 例全绿（16 文件），`npm run build` 通过且 dist 完全内联。
+
+### 2026-08-28 · 部署 v0.7.0 与构建产物追踪清理
+- 推送 `main`（源码）：`1077b5e`（批量维护）`→` `492df82`（同步 dist/index.html）`→` `492df82`。
+- 部署 `gh-pages`：由于 `main` 的 `.gitignore` 忽略 `dist/`，改用**临时 worktree** 干净替换：
+  - `git worktree add $TEMP\shallow-ghpages-deploy gh-pages` → 替换 `index.html` + `cards/` → 提交推送 `6994995..92a2b5d` → `git worktree remove --force`。
+  - 站点已更新至 v0.7.0：卡图压缩 / 卡面全幅透明 / 尺寸 118px / 卡片详情 / 空浅滩放回 / 数字前置 / 移动端跳过按钮。
+- 发现并处理：`main` 分支历史遗留追踪了 `dist/index.html`（虽 `.gitignore` 有 `dist/`，因早前被强制加入而仍被跟踪），重建后导致工作树残留 `M dist/index.html`。
+  - 处置：`git rm -r --cached dist` 从索引移除，保留本地文件；此后 `main` 完全忽略构建产物，由 `gh-pages` 独家部署。见踩坑 #13。
 
 ### 2026-08-25 · 批量修复与 UI 优化（0.6.0）
 - 抽牌选牌交互修复：原可实现无限多选超上限 → 确认按钮永久禁用、卡死在抽牌回合。现以"本回合应抽数"为总上限、点击已选浅滩可取消、提供"清空重选"、提示 `已选 x/y`（`js/ui/boardInteraction.js` + `interaction.js`）。
@@ -218,9 +232,9 @@ shallow-regrets/
 1. ✅ 补齐文档：README.md、docs/ARCHITECTURE.md、docs/ASSETS.md、docs/ISSUE_TEMPLATE.md、tools/README.md，并更新 CHANGELOG 至 0.5.0。
 2. ✅ 终验：`npm test` 全绿（133 例 / 16 文件）、`npm run build` 后 dist/index.html 完全内联可双击、联机服务验证（注意：本机 3000 端口可能被其它服务占用，用 `PORT=3001 npm run serve` 换端口）。
 3. ✅ 卡图本地方案（0.6.1）：18 张卡图已生成并纳入 `public/cards/`，`getArtUrl` 返回本地相对路径；`dist/cards/` 随构建输出。
-4. ✅ 部署：`main`（源码）与 `gh-pages`（产物 + `cards/`）均含本次更新；晋升需用 worktree 提交 gh-pages（含图片目录）。
+4. ✅ 部署（v0.7.0）：`main`（源码）已推送，`gh-pages`（产物 + `cards/`）已更新至 `92a2b5d`、`main` 不再追踪 `dist/`（见踩坑 #13）；部署流程 = 源分支 build → `git worktree add $TEMP/xxx gh-pages` → 替换 `index.html` + `cards/` → 提交推送 → `git worktree remove --force`。
 5. ⏳ 待办提醒：`docs/ASSETS.md` 仍写 "assets/ 为空（当前 UI 纯 CSS）"，现卡图为 `public/cards/`，后续修档时请同步更正；卡图所有权 / 许可声明如需注明生成工具，请补到 ASSETS.md。
-6. ✅ 0.7.0 批量维护已合并（卡图压缩 / 卡面全幅透明 / 尺寸 118px / 卡片详情 / 空浅滩放回 / 数字前置 / 移动端跳过按钮）；134 测试全绿、build 通过；`card-size-preview.html` 为临时预览文件，定稿后可从仓库移除或保留为工具。
+6. ✅ 0.7.0 批量维护已合并并上线部署：卡图压缩 / 卡面全幅透明 / 尺寸 118px / 卡片详情 / 空浅滩放回 / 数字前置 / 移动端跳过按钮；135 测试全绿、build 通过；`card-size-preview.html` 为临时预览文件（含尺寸滑块），定稿后可从仓库移除或保留为工具。
 
 ## 五、关键决策记录（ADR 简版）
 

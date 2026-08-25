@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import * as render from '../../js/ui/render.js';
+import { CARDS, CARD_BY_ID } from '../../js/core/cards.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(__dirname, '..', '..', 'index.html'), 'utf-8');
@@ -182,9 +183,9 @@ describe('render：回归——空浅滩可作为放回目标被点击', () => {
   });
 });
 
-describe('卡背难度区间 difficultyRange（固定分段）', () => {
-  it('回归：难度 0 → "0-1"，1/2 → "1-2"，3/4/5 → "3-5"', () => {
-    expect(render.difficultyRange(0)).toBe('0-1');
+describe('卡背难度区间 difficultyRange（固定三段）', () => {
+  it('回归：难度 0 → "0"，1/2 → "1-2"，3/4/5 → "3-5"', () => {
+    expect(render.difficultyRange(0)).toBe('0');
     expect(render.difficultyRange(1)).toBe('1-2');
     expect(render.difficultyRange(2)).toBe('1-2');
     expect(render.difficultyRange(3)).toBe('3-5');
@@ -192,12 +193,27 @@ describe('卡背难度区间 difficultyRange（固定分段）', () => {
     expect(render.difficultyRange(5)).toBe('3-5');
   });
 
-  it('不变式：任意合法卡背区间都必须包含其自身所需钩数（防"标注 0-1 但翻开不符"回归）', () => {
-    const r = (s) => {
-      const seg = render.difficultyRange(s);
-      const [lo, hi] = seg.split('-').map(Number);
-      return s >= lo && s <= hi;
-    };
-    for (let s = 0; s <= 5; s++) expect(r(s)).toBe(true);
+  it('不变式：逐一校验全部卡，每张卡的卡背分段都包含其自身所需钩数（一一对应，防"背 0-1 却是 strength 5"）', () => {
+    for (const c of CARDS) {
+      const seg = render.difficultyRange(c.strength);
+      const nums = seg.split('-').map(Number);
+      const lo = nums[0];
+      const hi = nums[nums.length - 1];
+      expect(c.strength, `${c.id} strength=${c.strength} seg=${seg}`).toBeGreaterThanOrEqual(lo);
+      expect(c.strength, `${c.id} strength=${c.strength} seg=${seg}`).toBeLessThanOrEqual(hi);
+      expect(seg, `${c.id}`).not.toBe('0-1');
+    }
+  });
+
+  it('renderShoals：卡背文本 = 该浅滩位置真实卡的 difficultyRange（顶牌由真实卡决定其卡背）', () => {
+    const state = { shoals: [['kraken'], ['sardine'], []] };
+    const el = document.createElement('div');
+    render.renderShoals(el, state, { shoalClickable: () => false }, {});
+    const texts = Array.from(el.querySelectorAll('.shoal-stack .card-back .cb-range'))
+      .map((n) => n.textContent);
+    // 克拉肯 strength=5 → "3-5"；沙丁鱼 strength=0 → "0"（绝非 "0-1"）
+    expect(texts).toEqual(['3-5', '0']);
+    expect(render.difficultyRange(CARD_BY_ID.kraken.strength)).toBe('3-5');
+    expect(render.difficultyRange(CARD_BY_ID.sardine.strength)).toBe('0');
   });
 });

@@ -16,10 +16,10 @@ function artUrl(card) {
   return artCache.get(card.id);
 }
 
-/** 卡背难度区间（固定分段，不看具体 strength 的 ±1）：
- *  难度 0 → "0-1"；难度 1、2 → "1-2"；难度 3、4、5 → "3-5" */
+/** 卡背难度区间（固定三段，不分层 ±）：
+ *  难度 0 → "0"；难度 1、2 → "1-2"；难度 3、4、5 → "3-5" */
 export function difficultyRange(strength) {
-  if (strength <= 0) return '0-1';
+  if (strength <= 0) return '0';
   if (strength <= 2) return '1-2';
   return '3-5';
 }
@@ -166,7 +166,7 @@ export function renderShoals(el, state, ui, handlers) {
         const range = document.createElement('div');
         range.className = 'cb-range';
         range.textContent = difficultyRange(CARD_BY_ID[shoal[k]].strength);
-        range.title = `鱼群难度区间（低难度鱼 0-1 / 1-2，高难度鱼 3-5）`;
+        range.title = `鱼群难度区间（低难度鱼 0 / 1-2，高难度鱼 3-5）`;
         back.appendChild(range);
         if (clickable) back.classList.add('selectable');
         if (ui.shoalSelected?.(i)) back.classList.add('selected');

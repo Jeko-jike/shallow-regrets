@@ -36,7 +36,7 @@
       { "path": "js/core/stateMachine.js", "purpose": "状态机 PHASE/ACTION、validateAction、applyAction", "last_updated": "2026-08-25" },
       { "path": "js/core/rules.js", "purpose": "取牌合法性 / 强度判定 / 放生 / 终局判定", "last_updated": "2026-08-25" },
       { "path": "js/core/abilities.js", "purpose": "六种能力效果纯函数表 + 目标校验 + 确定性随机", "last_updated": "2026-08-25" },
-      { "path": "js/ui/render.js", "purpose": "浅滩 / 抽出牌 / 钓获区 / 结算渲染；buildCardFront；卡背难度区间；阶段按钮 .dc-ctx", "last_updated": "2026-08-25" },
+      { "path": "js/ui/render.js", "purpose": "浅滩 / 抽出牌 / 钓获区 / 结算渲染；buildCardFront；卡背难度区间(0/1-2/3-5 固定三段)；阶段按钮 .dc-ctx", "last_updated": "2026-08-26" },
       { "path": "js/ui/interaction.js", "purpose": "交互计算（可点性/提示/buildBoardUi 共享棋盘 UI 描述）", "last_updated": "2026-08-25" },
       { "path": "js/ui/boardInteraction.js", "purpose": "玩家棋盘点击处理（M1/M2/M3/M5 共用，工厂注入 getState/getUi/dispatch/renderAll）", "last_updated": "2026-08-25" },
       { "path": "js/solo/soloScript.js", "purpose": "M5 脚本对手：6 张固定目标卡 + 确定性剧本（纯函数）", "last_updated": "2026-08-25" },
@@ -58,11 +58,11 @@
     "卡图一律本地方案：public/cards/{id}.jpg + getArtUrl 返回相对路径，与网络解耦"
   ],
   "recent_changes": [
+    { "date": "2026-08-26", "change": "卡背难度区间改为固定三段 0 / 1-2 / 3-5（strength 0 的卡背由'0-1'改为显示'0'，消除歧义区间）；补测锁定'每张卡背分段来自该浅滩位置的真实卡、且必含自身 strength'的一一对应不变式——遍历全部 18 张卡断言各段含自身钩数、新增 renderShoals 单测断言克拉肯(strength5)卡背为 3-5、沙丁鱼(strength0)卡背为 0；开局≥3个strength0浅滩已由 MIN_SMALL_TOPS=4 保证无需改。138 测试全绿，dist 重建确认 0-1 字面量已消失。", "impact": "js/ui/render.js(difficultyRange+提示文案)、js/core/gameState.js(注释)、tests/ui/main.test.js；dist 重建" },
     { "date": "2026-08-26", "change": "一键启动 bat 修复（两版迭代）：①初版重编码 GBK 仍不稳，终稿改为纯 ASCII 英文——bat 内不出现任何中文，任意代码页都能可靠解析，彻底消除'xxx 不是内部或外部命令/xxx was unexpected'闪退；并修掉联网 bat 里 else 块中未转义 ')' 导致块提前截断的硬 bug（echo 改用 1. 2. 而非 1) 2)）。②npm run build 重建 dist，使此前未提交的 MIN_SMALL_TOPS=4 与卡背难度固定分段真正生效，解决'开局<3个0-1浅滩'与'卡背0-1但翻开不符'（2000 种子诊断 0 例）。补 difficultyRange 单测锁定不变式，137 测试全绿。", "impact": "一键启动本地/联网游戏.bat(纯ASCII+CRLF+无BOM、无中文)；联网 bat 修复 else 块未转义 )；dist 重建(main 忽略不追踪)；可双击游玩修复后版本" },
     { "date": "2026-08-25", "change": "本轮维护：①已钓鱼全部可点击查看详情（含无能力鱼、已横置能力鱼），能力选目标时仍优先当目标；②卡图 512→256px，总量 1200→340KB，卡面 <img> 加 lazy+async；③初始易钓顶牌 MIN_SMALL_TOPS 3→4（实测 5000 种子稳定 4-5 张强度 0）；④卡背难度区间改为固定分段（0→0-1，1/2→1-2，3/4/5→3-5）；⑤阶段按钮（跳过/确认抽牌/清空重选/取消放回）统一定位于 .dc-ctx（抽出牌下方）；⑥PC(≥861px) 浅滩卡 118→132px、间距 10→6px。用户要求【取消维护 docs/PROJECT_NOTE.md】，改由本 project_note.json 承接项目状态。", "impact": "js/ui/render.js、main.js、soloUI.js、css/cards|board|responsive、js/core/gameState.js、public/cards；135 测试全绿，生成 PROJECT_NOTE 迁移快照" },
     { "date": "2026-08-28", "change": "部署 v0.7.0 与构建产物追踪清理：main(源码)→gh-pages(产物+cards/)；git rm -r --cached dist 移除索引残留，改 .gitignore 只影响未跟踪文件。", "impact": "main 分支完全忽略 dist/；部署流程 = 源分支 build → worktree 替换 index.html+cards/ → 提交推送 → worktree remove" },
-    { "date": "2026-08-28", "change": "批量维护 0.7.0：卡图压缩至 512px；卡尺寸 118×177；开局确定性交换保证≥3 易钓顶牌；数字前置；卡面全幅透明文字；卡牌详情弹窗；空浅滩放回修复；移动端跳过按钮下移。", "impact": "135 测试全绿；card-size-preview.html 为临时预览工具" },
-    { "date": "2026-08-25", "change": "批量修复与 UI 优化 0.6.0：抽牌选牌上限/取消交互；卡面上下 50% 布局；卡背难度区间徽章；分/钩实时分离显示；Solo 脚本回合调度；特色目标三态；平衡调整（分值>3 不供钩、钩数靠小鱼积累）。", "impact": "129→133 测试全绿" }
+    { "date": "2026-08-28", "change": "批量维护 0.7.0：卡图压缩至 512px；卡尺寸 118×177；开局确定性交换保证≥3 易钓顶牌；数字前置；卡面全幅透明文字；卡牌详情弹窗；空浅滩放回修复；移动端跳过按钮下移。", "impact": "135 测试全绿；card-size-preview.html 为临时预览工具" }
   ],
   "known_issues": [
     { "id": 1, "description": "docs/ASSETS.md 仍写 'assets/ 为空（当前 UI 纯 CSS）'，与实际 public/cards/ 卡图不符；卡图所有权/许可/生成工具需补登记。", "status": "open", "priority": "medium" },

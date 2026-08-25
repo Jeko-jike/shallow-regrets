@@ -58,7 +58,7 @@
     "卡图一律本地方案：public/cards/{id}.jpg + getArtUrl 返回相对路径，与网络解耦"
   ],
   "recent_changes": [
-    { "date": "2026-08-26", "change": "修复一键启动 bat 双击无反应（根因：bat 为 UTF-8 无BOM，cmd 按 GBK 读取致中文行被拆成多条命令→解析崩坏）；两 bat 重编码为 GBK(CP936) 无BOM；并用新源码 npm run build 重建 dist，使此前未提交的 MIN_SMALL_TOPS=4 与难度固定分段真正生效，解决'开局<3个0-1浅滩'与'卡背0-1但翻开不符'（2000 种子诊断 0 例）。补 difficultyRange 单测锁定不变式，137 测试全绿。", "impact": "一键启动本地/联网游戏.bat(GBK)；dist 重建(main 忽略不追踪)；可双击游玩修复后版本" },
+    { "date": "2026-08-26", "change": "一键启动 bat 修复（两版迭代）：①初版重编码 GBK 仍不稳，终稿改为纯 ASCII 英文——bat 内不出现任何中文，任意代码页都能可靠解析，彻底消除'xxx 不是内部或外部命令/xxx was unexpected'闪退；并修掉联网 bat 里 else 块中未转义 ')' 导致块提前截断的硬 bug（echo 改用 1. 2. 而非 1) 2)）。②npm run build 重建 dist，使此前未提交的 MIN_SMALL_TOPS=4 与卡背难度固定分段真正生效，解决'开局<3个0-1浅滩'与'卡背0-1但翻开不符'（2000 种子诊断 0 例）。补 difficultyRange 单测锁定不变式，137 测试全绿。", "impact": "一键启动本地/联网游戏.bat(纯ASCII+CRLF+无BOM、无中文)；联网 bat 修复 else 块未转义 )；dist 重建(main 忽略不追踪)；可双击游玩修复后版本" },
     { "date": "2026-08-25", "change": "本轮维护：①已钓鱼全部可点击查看详情（含无能力鱼、已横置能力鱼），能力选目标时仍优先当目标；②卡图 512→256px，总量 1200→340KB，卡面 <img> 加 lazy+async；③初始易钓顶牌 MIN_SMALL_TOPS 3→4（实测 5000 种子稳定 4-5 张强度 0）；④卡背难度区间改为固定分段（0→0-1，1/2→1-2，3/4/5→3-5）；⑤阶段按钮（跳过/确认抽牌/清空重选/取消放回）统一定位于 .dc-ctx（抽出牌下方）；⑥PC(≥861px) 浅滩卡 118→132px、间距 10→6px。用户要求【取消维护 docs/PROJECT_NOTE.md】，改由本 project_note.json 承接项目状态。", "impact": "js/ui/render.js、main.js、soloUI.js、css/cards|board|responsive、js/core/gameState.js、public/cards；135 测试全绿，生成 PROJECT_NOTE 迁移快照" },
     { "date": "2026-08-28", "change": "部署 v0.7.0 与构建产物追踪清理：main(源码)→gh-pages(产物+cards/)；git rm -r --cached dist 移除索引残留，改 .gitignore 只影响未跟踪文件。", "impact": "main 分支完全忽略 dist/；部署流程 = 源分支 build → worktree 替换 index.html+cards/ → 提交推送 → worktree remove" },
     { "date": "2026-08-28", "change": "批量维护 0.7.0：卡图压缩至 512px；卡尺寸 118×177；开局确定性交换保证≥3 易钓顶牌；数字前置；卡面全幅透明文字；卡牌详情弹窗；空浅滩放回修复；移动端跳过按钮下移。", "impact": "135 测试全绿；card-size-preview.html 为临时预览工具" },
@@ -80,7 +80,7 @@
     ".gitignore 只影响未跟踪文件；改它不能清除已跟踪文件，须先 git rm --cached。构建产物 main 不跟踪、gh-pages 独家部署",
     "任何'玩家动作推进到对方回合'的控制器，dispatch 后须检查是否轮到脚本并就绪调度",
     "阶段按钮已统一定位在 .dc-ctx（抽出牌下方），改动其选择器/文案须同步 main.test.js 与 soloUI.test.js"
-    ,"一键启动*.bat 必须用 GBK(CP936)、无 BOM 保存；用 UTF-8 编辑器改动后不重编码会致 cmd 解析崩坏（双击无反应/闪退）"
+    ,"一键启动*.bat 必须为纯 ASCII（仅英文提示、不含任何中文）+ CRLF；bat 内出现中文在任意代码页下都可能致 cmd 解析崩坏（双击无反应/闪退），需要中文提示请放到游戏页或 README。另：echo 出现在 if/for 块内时禁止裸 ')'（用 1. 2. 或 ^)）以免块提前截断"
   ],
   "api_details": {
     "endpoints": [

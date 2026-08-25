@@ -1,8 +1,10 @@
 /**
  * 18 张鱼卡的 AI 绘图提示词清单（中 + 英）。
  * 统一风格：克苏鲁 + 海洋恐怖 + 手绘漫画/水彩。
- * 图片渲染接口（唯一允许来源，prompt 需 URL 编码）：
- *   https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt={prompt}&image_size=square_hd
+ *
+ * 卡图采用「本地方案」：用种子图生成工具（如 Seedream）按下列提示词批量产出，
+ * 存为 public/cards/{artKey}.jpg，构建后复制到 dist/cards/ 并被相对路径引用。
+ * 这样本地双击、GitHub Pages（根/子路径）均能稳定加载，不再依赖外网图片接口。
  */
 
 const STYLE_ZH = '克苏鲁海洋恐怖风格，手绘水彩漫画插画，深海诡异生物，暗色调，青绿与深蓝配色，细腻笔触，卡牌插画，无文字';
@@ -97,10 +99,7 @@ export const CARD_BACK_PROMPT = {
   en: `Deep sea card back pattern, dark blue swirls and fish hook symbols, Cthulhu style, ${STYLE_EN}`,
 };
 
-const API_BASE = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image';
-
-/** 生成某张卡（或卡背）的图片 URL */
-export function getArtUrl(artKey, size = 'square_hd') {
-  const prompt = ART_PROMPTS[artKey] ? ART_PROMPTS[artKey].en : CARD_BACK_PROMPT.en;
-  return `${API_BASE}?prompt=${encodeURIComponent(prompt)}&image_size=${size}`;
+/** 返回某张卡（或卡背）的本地图片相对路径（本地方案）。图片存放于 public/cards/，构建后位于 dist/cards/。 */
+export function getArtUrl(artKey, _size = 'square') {
+  return `cards/${artKey}.jpg`;
 }

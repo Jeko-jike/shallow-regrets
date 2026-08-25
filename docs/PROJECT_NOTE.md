@@ -50,7 +50,7 @@ shallow-regrets/
 │   │   ├── rng.js          # 可注入种子的随机数
 │   │   └── eventBus.js     # 事件总线（预留）
 │   └── data/
-│       └── artPrompts.js   # 18 张卡 AI 绘图提示词 + 图片 URL 生成
+│       └── artPrompts.js   # 18 张卡 AI 绘图提示词清单 + getArtUrl 本地相对路径
 ├── server/               # M3 联机服务端（Node.js）
 │   ├── server.js         # 入口：静态托管 + Socket.IO
 │   ├── room.js           # 房间管理（4 位房间码 / 准备 / 生命周期）
@@ -109,6 +109,12 @@ shallow-regrets/
    - 约定：**单机交付必须走 `npm run build` 生成可双击的 dist/index.html**。
 
 ## 三、任务日志
+
+### 2026-08-25 · 卡图改为本地方案并为线上页配图
+- 按 `artPrompts.js` 提示词批量生成 18 张卡图（手绘水彩克苏鲁风格），存 `public/cards/{id}.jpg`；构建复制到 `dist/cards/`。
+- `getArtUrl` 由"返回外网图片生成 URL"改为"返回本地相对路径 `cards/{artKey}.jpg`"，与网络解耦：本地离线双击、GitHub Pages（根/子路径）均稳定加载。
+- 卡背保持 CSS 矢量绘制（漩涡 + 鱼钩 + 难度区间徽章），不使用位图；故仅交付 18 张卡图，无卡背位图。
+- 部署：gh-pages 分支需一并提交 `cards/` 图片目录（仅提交 index.html 会导致线上缺图）。
 
 ### 2026-08-25 · 补齐全部文档（收尾）
 - 新增 `README.md`：项目简介、五模式说明、单机/联机运行方式、测试命令、目录结构、资源许可声明。

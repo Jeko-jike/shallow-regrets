@@ -2,6 +2,16 @@
 
 本文件遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本（SemVer）。
 
+## [0.6.1] - 2026-08-25
+
+### 变更
+- 卡图改为「本地方案」：由图片生成工具按 `artPrompts.js` 提示词批量产出 18 张卡图（`public/cards/{id}.jpg`，手绘水彩克苏鲁风格），构建时复制到 `dist/cards/` 并被相对路径引用。
+- `getArtUrl` 不再返回外网图片生成接口 URL，改为返回本地相对路径 `cards/{artKey}.jpg`；不再依赖 `trae-api-cn.mchost.guru`，本地离线双击与 GitHub Pages（根/子路径）均可稳定加载。
+- 卡背维持 CSS 矢量绘制（漩涡 + 鱼钩 + 难度区间徽章），不使用位图。
+
+### 测试
+- 133 例全绿；新增对 `getArtUrl` 相对路径返回的依赖（本地化后与网络解耦）。
+
 ## [0.6.0] - 2026-08-25
 
 ### 修复

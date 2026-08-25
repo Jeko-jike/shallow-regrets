@@ -108,7 +108,29 @@ shallow-regrets/
    - 解决：`tools/inline-build.mjs` 把 JS/CSS 内联进 `dist/index.html`；`package.json` 的 `build` 脚本为 `vite build && node tools/inline-build.mjs`。
    - 约定：**单机交付必须走 `npm run build` 生成可双击的 dist/index.html**。
 
+9. **Solo 玩家回合结束后脚本回合不推进**
+   - 现象：M5 玩家结束回合后无法轮到人机脚本回合，脚本意图/行动日志不显示。
+   - 原因：`runScript()` 只在对局开始调用一次，玩家动作结束后没有任何调用方触发脚本回合。
+   - 解决：`boardInteraction` 的 `dispatch` 包装里，若玩家动作结束了本回合（`isScriptTurn()` 为真）自动调用 `runScript()`；`startSolo` 时重置脚本意图文案。
+   - 约定：**任何"玩家动作推进到对方回合"的控制器，都必须在 dispatch 后检查是否轮到脚本并就绪调度**。
+
+10. **卡图必须用本地方案（勿回退到外网图片 URL）**
+   - 背景：早期卡图用外网 `text_to_image` 接口按 prompt 现生成，GitHub Pages 上因网络/跨域时好时坏。
+   - 现在：18 张卡图存 `public/cards/{id}.jpg`，`getArtUrl` 返回相对路径 `cards/{artKey}.jpg`，构建复制到 `dist/cards/`；本地双击与 Pages 均稳定。
+   - 约定：新增/更换卡图须放入 `public/cards/` 并命名为 `{artKey}.jpg`；**gh-pages 分支部署必须连同 `cards/` 目录一起提交**，否则线上缺图。
+   - 卡背保持 CSS 矢量绘制，无需位图（卡面 img 的 `error` 事件有 `art-fallback` 兜底）。
+
 ## 三、任务日志
+
+### 2026-08-25 · 批量修复与 UI 优化（0.6.0）
+- 抽牌选牌交互修复：原可实现无限多选超上限 → 确认按钮永久禁用、卡死在抽牌回合。现以"本回合应抽数"为总上限、点击已选浅滩可取消、提供"清空重选"、提示 `已选 x/y`（`js/ui/boardInteraction.js` + `interaction.js`）。
+- 卡面布局重做：上半 50% 插画 + 下半 50% 信息区（分值 / 需钩(难度) / 供钩(钩数) / 名称 / 能力），供钩为 0 灰显（`css/cards.css` + `render.js`）。
+- 卡背新增难度区间徽章：`[strength-1, strength+1]` 截断 0-5（如难度 4 → "3-5"）。
+- 玩家条 / 钓获区同时显示实时"分"与"⚓钩"（`getRawScore` + `getHooks`，明确分离）。
+- Solo 脚本回合调度修复：玩家动作若结束本回合，`boardInteraction` 的 dispatch 后自动调用 `runScript()`，脚本回合不再卡死；开新局重置脚本意图文案（`soloUI.js`）。
+- Solo 特色目标三态：`getLiveGoals` 每项目标带 `status: progress | failed | done`；noFoul 一钓污秽即 failed（见踩坑 #7）。
+- 放回目标排除满堆（≥3 张）；平衡性调整——分值 > 3 的卡 `hooks: 0`，钩数仅靠小鱼积累（见 ADR）。
+- 测试 129 → 133 例全绿。
 
 ### 2026-08-25 · 卡图改为本地方案并为线上页配图
 - 按 `artPrompts.js` 提示词批量生成 18 张卡图（手绘水彩克苏鲁风格），存 `public/cards/{id}.jpg`；构建复制到 `dist/cards/`。
@@ -169,6 +191,9 @@ shallow-regrets/
 下一步计划（收尾）：
 1. ✅ 补齐文档：README.md、docs/ARCHITECTURE.md、docs/ASSETS.md、docs/ISSUE_TEMPLATE.md、tools/README.md，并更新 CHANGELOG 至 0.5.0。
 2. ✅ 终验：`npm test` 全绿（133 例 / 16 文件）、`npm run build` 后 dist/index.html 完全内联可双击、联机服务验证（注意：本机 3000 端口可能被其它服务占用，用 `PORT=3001 npm run serve` 换端口）。
+3. ✅ 卡图本地方案（0.6.1）：18 张卡图已生成并纳入 `public/cards/`，`getArtUrl` 返回本地相对路径；`dist/cards/` 随构建输出。
+4. ✅ 部署：`main`（源码）与 `gh-pages`（产物 + `cards/`）均含本次更新；晋升需用 worktree 提交 gh-pages（含图片目录）。
+5. ⏳ 待办提醒：`docs/ASSETS.md` 仍写 "assets/ 为空（当前 UI 纯 CSS）"，现卡图为 `public/cards/`，后续修档时请同步更正；卡图所有权 / 许可声明如需注明生成工具，请补到 ASSETS.md。
 
 ## 五、关键决策记录（ADR 简版）
 
@@ -179,6 +204,11 @@ shallow-regrets/
 2. **钩数机制：strength 与 hooks 分离**
    - 官方规则"已钓到的鱼其 strength 之和即当前钩子数"在 18 卡精简版中会导致小鱼不产钩、开局死锁。
    - 采用 `strength`（所需钩数）+ `hooks`（提供钩数）分离，小鱼 strength=0/hooks=1，保证对局可推进。
+
+2b. **平衡性：分值 > 3 的卡不提供钩数（hooks: 0）**
+   - 若大鱼（如梭鱼/克拉肯）被钓获后仍产钩，容易滚雪球、大鱼无限连锁。
+   - 现在仅分值 ≤ 3 的小/中型鱼各提供 1 钩，大鱼是"终局渔获"、不产钩，钩数只能靠小鱼逐步积累。
+   - 代价：对局节奏变慢、更强调策略取舍；已同步到卡面"供钩为 0 灰显"与 AI 抽牌"可钓性绝对优先"。
 
 3. **M4 复用对局页而非独立屏幕**
    - 观战棋盘与普通对局渲染完全一致，复用 `#game` 屏幕 + 内嵌 `#spectatePanel`，避免重复 DOM 与 ID 冲突，渲染层零改动（仅 renderDrawn 加 spectate 选项）。

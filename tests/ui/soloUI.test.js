@@ -80,8 +80,8 @@ describe('M5 Solo 挑战', () => {
       const c = soloUI.__getController();
       expect($('#soloIntent').textContent).toContain('等待你的行动');
       // —— 通过 UI 驱动一个完整玩家回合 ——
-      // 1) 能力阶段：跳过
-      clickText('#actionBar .btn', '跳过能力阶段');
+      // 1) 能力阶段：跳过（按钮位于抽出牌区下方）
+      clickText('.dc-skip', '跳过能力阶段');
       // 2) 抽牌阶段：点两个不同浅滩（每浅滩一张）后确认
       const backs = $$('.shoal-stack .card-back.selectable');
       expect(backs.length).toBeGreaterThan(0);

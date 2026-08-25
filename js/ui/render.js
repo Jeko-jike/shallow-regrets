@@ -71,12 +71,12 @@ export function buildCardFront(card, { size = '', selectable = false, selected =
   const need = document.createElement('span');
   need.className = 'cf-need';
   need.title = `获取难度：钓起需消耗 ${card.strength} 钩`;
-  need.innerHTML = `需<span class="hook">⚓</span>${card.strength}`;
+  need.innerHTML = `需${card.strength}<span class="hook">⚓</span>`;
   stats.appendChild(need);
   const give = document.createElement('span');
   give.className = 'cf-give' + (card.hooks === 0 ? ' zero' : '');
   give.title = `获取钩子数：钓获后提供 ${card.hooks} 钩`;
-  give.innerHTML = `供<span class="hook">⚓</span>${card.hooks}`;
+  give.innerHTML = `供${card.hooks}<span class="hook">⚓</span>`;
   stats.appendChild(give);
   info.appendChild(stats);
 
@@ -117,7 +117,7 @@ export function renderPlayersBar(el, state) {
     score.innerHTML = `<span class="score-label">分</span>${getRawScore(state, i)}`;
     const hooks = document.createElement('div');
     hooks.className = 'p-hooks';
-    hooks.innerHTML = `<span class="hook-icon">⚓</span>${getHooks(state, i)}`;
+    hooks.innerHTML = `${getHooks(state, i)}<span class="hook-icon">⚓</span>`;
     stats.appendChild(score);
     stats.appendChild(hooks);
     chip.appendChild(name);
@@ -145,8 +145,14 @@ export function renderShoals(el, state, ui, handlers) {
 
     const stack = document.createElement('div');
     stack.className = 'shoal-stack';
+    const clickable = (ui.shoalClickable?.(i) ?? false) && ui.canInteract !== false;
     if (shoal.length === 0) {
       stack.textContent = '空';
+      // 空浅滩没有卡背可点，需让整个空堆可点（否则放回到空浅滩时点不动=卡死）
+      if (clickable && handlers.onShoalClick) {
+        stack.classList.add('selectable');
+        stack.addEventListener('click', () => handlers.onShoalClick(i));
+      }
     } else {
       const show = Math.min(shoal.length, 3);
       for (let k = 0; k < show; k++) {
@@ -158,7 +164,6 @@ export function renderShoals(el, state, ui, handlers) {
         range.textContent = difficultyRange(CARD_BY_ID[shoal[k]].strength);
         range.title = `鱼群难度区间（实际难度在其 ±1 内）`;
         back.appendChild(range);
-        const clickable = (ui.shoalClickable?.(i) ?? false) && ui.canInteract !== false;
         if (clickable) back.classList.add('selectable');
         if (ui.shoalSelected?.(i)) back.classList.add('selected');
         back.dataset.shoal = i;
@@ -202,40 +207,53 @@ export function renderDrawn(el, state, ui, handlers, { spectate = false } = {}) 
   cardsEl.innerHTML = '';
   if (state.drawn.length === 0) {
     hintEl.textContent = ui.drawnHint || '尚未抽牌';
-    return;
+  } else {
+    hintEl.textContent = ui.drawnHint || '';
+    state.drawn.forEach((cardId, idx) => {
+      const card = CARD_BY_ID[cardId];
+      const slot = document.createElement('div');
+      slot.className = 'drawn-card-slot';
+
+      const front = buildCardFront(card, { size: 'lg', data: { cardId, drawnIdx: idx } });
+      front.addEventListener('click', () => handlers.onCardInfo?.(cardId));
+      slot.appendChild(front);
+
+      if (!spectate) {
+        const actions = document.createElement('div');
+        actions.className = 'dc-actions';
+
+        const canAct = ui.canInteract !== false;
+        const btnCatch = document.createElement('button');
+        btnCatch.className = 'btn btn-sm btn-primary';
+        btnCatch.textContent = '钓走';
+        btnCatch.disabled = !canAct || !handlers.canCatch(cardId);
+        btnCatch.addEventListener('click', () => handlers.onCatch(cardId));
+        actions.appendChild(btnCatch);
+
+        const btnThrow = document.createElement('button');
+        btnThrow.className = 'btn btn-sm';
+        btnThrow.textContent = '放回';
+        btnThrow.disabled = !canAct || !!ui.mustCatchFirst;
+        btnThrow.addEventListener('click', () => handlers.onThrowClick(cardId));
+        actions.appendChild(btnThrow);
+
+        slot.appendChild(actions);
+      }
+      cardsEl.appendChild(slot);
+    });
   }
-  hintEl.textContent = ui.drawnHint || '';
-  state.drawn.forEach((cardId, idx) => {
-    const card = CARD_BY_ID[cardId];
-    const slot = document.createElement('div');
-    slot.className = 'drawn-card-slot';
 
-    const front = buildCardFront(card, { size: 'lg', data: { cardId, drawnIdx: idx } });
-    slot.appendChild(front);
-
-    if (!spectate) {
-      const actions = document.createElement('div');
-      actions.className = 'dc-actions';
-
-      const canAct = ui.canInteract !== false;
-      const btnCatch = document.createElement('button');
-      btnCatch.className = 'btn btn-sm btn-primary';
-      btnCatch.textContent = '钓走';
-      btnCatch.disabled = !canAct || !handlers.canCatch(cardId);
-      btnCatch.addEventListener('click', () => handlers.onCatch(cardId));
-      actions.appendChild(btnCatch);
-
-      const btnThrow = document.createElement('button');
-      btnThrow.className = 'btn btn-sm';
-      btnThrow.textContent = '放回';
-      btnThrow.disabled = !canAct || !!ui.mustCatchFirst;
-      btnThrow.addEventListener('click', () => handlers.onThrowClick(cardId));
-      actions.appendChild(btnThrow);
-
-      slot.appendChild(actions);
-    }
-    cardsEl.appendChild(slot);
-  });
+  // 能力阶段：在抽出牌下方提供"跳过能力阶段"按钮（放在玩家区上方，移动端易点）
+  const prev = el.querySelector('.dc-skip');
+  if (prev) prev.remove();
+  const canAct = ui.canInteract !== false;
+  if (!spectate && state.phase === 'ability' && canAct && handlers.onPassAbilities) {
+    const skip = document.createElement('button');
+    skip.className = 'btn btn-sm btn-ghost dc-skip';
+    skip.textContent = '跳过能力阶段 →';
+    skip.addEventListener('click', () => handlers.onPassAbilities());
+    el.appendChild(skip);
+  }
 }
 
 /**
@@ -254,7 +272,7 @@ export function renderCaught(el, state, ui, handlers) {
     name.textContent = p.name + (i === state.currentPlayer ? '（当前）' : '');
     const meta = document.createElement('div');
     meta.className = 'cp-meta';
-    meta.innerHTML = `<span class="cp-score">${getRawScore(state, i)} 分</span><span class="cp-hooks">⚓ ${getHooks(state, i)} 钩</span>`;
+    meta.innerHTML = `<span class="cp-score">${getRawScore(state, i)} 分</span><span class="cp-hooks">${getHooks(state, i)}⚓ 钩</span>`;
     head.appendChild(name);
     head.appendChild(meta);
     panel.appendChild(head);
@@ -290,7 +308,7 @@ export function renderActionBar(el, state, ui, handlers) {
   };
   switch (state.phase) {
     case 'ability':
-      add('跳过能力阶段', 'btn-ghost', handlers.onPassAbilities);
+      // 跳过能力阶段按钮已移至抽出牌区下方（renderDrawn），此处不再重复
       break;
     case 'draw':
       add('确认抽牌', 'btn-primary', handlers.onConfirmDraw, !ui.drawCanConfirm);

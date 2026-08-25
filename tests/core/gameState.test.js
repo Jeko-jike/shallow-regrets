@@ -14,6 +14,17 @@ describe('gameState.js 初始状态', () => {
     }
   });
 
+  it('回归：大量种子下保证 3 个易钓顶牌，且整副牌不重复不丢失', () => {
+    for (let seed = 0; seed < 2000; seed++) {
+      const state = createInitialState({ seed, playerNames: ['A', 'B'] });
+      const all = state.shoals.flat();
+      expect(all).toHaveLength(TOTAL_CARDS);
+      expect(new Set(all).size, `seed=${seed} 出现重复/丢失`).toBe(TOTAL_CARDS);
+      const smallTops = state.shoals.filter((s) => CARD_BY_ID[s[0]].strength <= 0).length;
+      expect(smallTops, `seed=${seed} 易钓顶牌不足`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it('至少 3 个浅滩的顶牌是 strength<=0 的小鱼', () => {
     for (let seed = 0; seed < 50; seed++) {
       const state = createInitialState({ seed, playerNames: ['A', 'B'] });

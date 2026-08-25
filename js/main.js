@@ -7,6 +7,7 @@ import { applyAction, ACTION, PHASE } from './core/stateMachine.js';
 import { getWinners } from './core/scoring.js';
 import { CARD_BY_ID } from './core/cards.js';
 import { ABILITY_DESCRIPTIONS } from './core/abilities.js';
+import { getArtUrl } from './data/artPrompts.js';
 import {
   getRequiredDrawCount,
   canCatch,
@@ -196,40 +197,79 @@ function onFishClick(playerIndex, cardId) {
   const ui = game.ui;
   const me = s.currentPlayer;
 
-  // 自己已钓的能力鱼：能力阶段发动
-  if (playerIndex === me && s.phase === PHASE.ABILITY) {
-    const card = CARD_BY_ID[cardId];
-    if (!card.ability || s.players[me].exhausted.includes(cardId)) return;
-    if (ui.abilityCardId && ui.swapStep === 'own') {
-      // swap_fish：选择自己要交换出去的鱼
+  // 能力目标选择流程优先：此时点击被用作"选择目标"，而非打开详情
+  if (s.phase === PHASE.ABILITY && ui.abilityCardId) {
+    const ability = CARD_BY_ID[ui.abilityCardId].ability;
+    // 交换：点自己的鱼 = 选择要换出的鱼
+    if (playerIndex === me && ability === 'swap_fish' && ui.swapStep === 'own') {
       ui.swapOwn = cardId;
       ui.swapStep = 'opp';
       modal.showToast('请点击对方的一条鱼进行交换', 'info');
       renderAll();
       return;
     }
-    activateAbility(cardId);
+    // 横置/交换：点对方的鱼 = 选择目标
+    if (playerIndex !== me) {
+      if (ability === 'force_exhaust') {
+        const cardId2 = ui.abilityCardId;
+        ui.abilityCardId = null;
+        dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target: { cardId } });
+        return;
+      }
+      if (ability === 'swap_fish' && ui.swapStep === 'opp') {
+        const cardId2 = ui.abilityCardId;
+        const ownCardId = ui.swapOwn;
+        ui.abilityCardId = null;
+        ui.swapStep = null;
+        ui.swapOwn = null;
+        dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target: { ownCardId, oppCardId: cardId } });
+        return;
+      }
+    }
     return;
   }
 
-  // 对方鱼：能力目标选择
-  if (playerIndex !== me && s.phase === PHASE.ABILITY && ui.abilityCardId) {
-    const ability = CARD_BY_ID[ui.abilityCardId].ability;
-    if (ability === 'force_exhaust') {
-      const cardId2 = ui.abilityCardId;
-      ui.abilityCardId = null;
-      dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target: { cardId } });
-      return;
-    }
-    if (ability === 'swap_fish' && ui.swapStep === 'opp') {
-      const cardId2 = ui.abilityCardId;
-      const ownCardId = ui.swapOwn;
-      ui.abilityCardId = null;
-      ui.swapStep = null;
-      ui.swapOwn = null;
-      dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target: { ownCardId, oppCardId: cardId } });
-    }
+  // 其余情况：打开卡牌详情（能力鱼可在详情中选择发动能力）
+  showCardDetail(playerIndex, cardId);
+}
+
+/** 打开卡牌详情：展示能力、卡图与数值；能力鱼在能力阶段可从这里发动 */
+function showCardDetail(playerIndex, cardId) {
+  const s = game.state;
+  const card = CARD_BY_ID[cardId];
+  const owner = playerIndex != null ? s.players[playerIndex] : null;
+  const exhausted = !!(owner && owner.exhausted.includes(cardId));
+  const canAct =
+    s.phase === PHASE.ABILITY && owner && playerIndex === s.currentPlayer && !!card.ability && !exhausted;
+
+  const body = document.createElement('div');
+  body.className = 'card-detail';
+  const art = document.createElement('div');
+  art.className = 'cd-art';
+  const img = document.createElement('img');
+  img.src = getArtUrl(card.art);
+  img.alt = card.name;
+  art.appendChild(img);
+  const info = document.createElement('div');
+  info.className = 'cd-info';
+  info.innerHTML = `
+    <div class="cd-name">${card.name}<span class="cd-en"> ${card.nameEn}</span></div>
+    <div class="cd-tags">
+      ${card.type === 'foul' ? '<span class="cd-tag foul">污秽</span>' : ''}
+      <span class="cd-tag">${card.points} 分</span>
+      <span class="cd-tag">需 ${card.strength}⚓</span>
+      <span class="cd-tag">供 ${card.hooks}⚓</span>
+    </div>
+    <div class="cd-ability"><b>能力：</b>${card.ability ? ABILITY_DESCRIPTIONS[card.ability] : '无'}</div>
+  `;
+  body.appendChild(art);
+  body.appendChild(info);
+
+  const actions = [{ text: '知道了', className: 'btn-ghost' }];
+  if (canAct) {
+    actions.unshift({ text: '发动能力', className: 'btn-primary', onClick: () => activateAbility(cardId) });
   }
+  modal.showModal({ title: '卡牌详情', body, actions });
 }
 
 function activateAbility(cardId) {
@@ -344,6 +384,8 @@ function renderAll() {
     canCatch: (cardId) => canCatch(s, s.currentPlayer, cardId) && !s.caughtThisTurn,
     onCatch,
     onThrowClick,
+    onPassAbilities,
+    onCardInfo: (cardId) => showCardDetail(undefined, cardId),
   });
   render.renderCaught($('playersCaught'), s, ui, { onFishClick });
   render.renderActionBar($('actionBar'), s, ui, {

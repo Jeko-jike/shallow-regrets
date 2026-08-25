@@ -59,12 +59,10 @@
   transition: transform var(--anim-med), border-color var(--anim-fast), filter var(--anim-fast), box-shadow var(--anim-fast);
 }
 
-/* —— 上半：插画区（约 50%）—— */
+/* —— 上半：插画区（占满整张卡，文字浮于其上）—— */
 .card-front .cf-art-wrap {
-  position: relative;
-  height: 50%;
-  min-height: 0;
-  flex-shrink: 0;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background: linear-gradient(160deg, #12304f, #0a1c33);
 }
@@ -93,15 +91,20 @@
   box-shadow: 0 4px 12px rgba(194, 65, 12, 0.35);
 }
 
-/* —— 下半：信息区（约 50%：分值 / 需钩·难度 / 供钩·钩数 / 名称 / 能力）—— */
+/* —— 下半：信息区（浮于卡面上约 50%，背景透明，用文字阴影保证可读）—— */
 .card-front .cf-info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   height: 50%;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 6px 7px 7px;
-  background: linear-gradient(180deg, rgba(9, 21, 37, 0.75), rgba(9, 21, 37, 0.35));
+  padding: 6px 7px 8px;
+  background: transparent;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.92), 0 0 8px rgba(0, 0, 0, 0.7);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.55);
 }
 
 .card-front .cf-stats {
@@ -224,25 +227,25 @@
 }
 
 .card-front.lg .cf-name {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .card-front.lg .cf-points {
-  font-size: 17px;
+  font-size: 19px;
 }
 
 .card-front.lg .cf-need,
 .card-front.lg .cf-give {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .card-front.lg .cf-need .hook,
 .card-front.lg .cf-give .hook {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .card-front.lg .cf-ability {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* 动画关闭时禁用过渡 */

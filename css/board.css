@@ -90,13 +90,21 @@
   font-size: 20px;
 }
 
+/* 空浅滩作为放回/选择目标时，整堆可点 */
+.shoal.empty .shoal-stack.selectable {
+  cursor: pointer;
+  border-color: var(--accent-strong);
+  color: var(--accent);
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.28);
+}
+
 /* 抽出牌区 */
 .drawn-area {
   background: var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 14px 16px;
-  min-height: 210px;
+  min-height: 300px;
 }
 
 .drawn-area .da-head {
@@ -134,6 +142,15 @@
 .drawn-card-slot .dc-actions {
   display: flex;
   gap: 6px;
+}
+
+/* 能力阶段：抽出牌下方的跳过按钮（位于玩家区上方） */
+.dc-skip {
+  display: inline-flex;
+  margin: 12px auto 0;
+  width: fit-content;
+  color: var(--accent);
+  border-color: rgba(45, 212, 191, 0.35);
 }
 
 /* 玩家钓获区 */

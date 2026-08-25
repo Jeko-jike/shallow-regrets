@@ -183,3 +183,86 @@
   color: var(--text-dim);
   margin-top: 4px;
 }
+
+/* ---- 卡牌详情弹窗 ---- */
+.card-detail {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.card-detail .cd-art {
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 2px solid var(--line);
+  aspect-ratio: 2 / 3;
+  background: linear-gradient(160deg, #12304f, #0a1c33);
+}
+
+.card-detail .cd-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-detail .cd-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-detail .cd-name {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.card-detail .cd-en {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.card-detail .cd-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-detail .cd-tag {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(45, 212, 191, 0.1);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  color: var(--accent);
+}
+
+.card-detail .cd-tag.foul {
+  background: rgba(194, 65, 12, 0.14);
+  border-color: rgba(194, 65, 12, 0.45);
+  color: #fba174;
+}
+
+.card-detail .cd-ability {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+
+.card-detail .cd-ability b {
+  color: var(--gold);
+}
+
+@media (max-width: 520px) {
+  .card-detail {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .card-detail .cd-art {
+    max-width: 180px;
+    margin: 0 auto;
+  }
+}

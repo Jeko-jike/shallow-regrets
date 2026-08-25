@@ -11,9 +11,8 @@
  *  - shuffle_shoals  洗牌并重置浅滩
  *  - immunity        本回合免疫（对方无法对你横置/交换）
  */
-import { CARD_BY_ID } from './cards.js';
 import { createRng } from '../utils/rng.js';
-import { NUM_SHOALS, CARDS_PER_SHOAL } from './gameState.js';
+import { ensureSmallTops, NUM_SHOALS, CARDS_PER_SHOAL } from './gameState.js';
 
 export const ABILITY_TYPES = {
   DRAW_EXTRA: 'draw_extra',
@@ -131,25 +130,8 @@ export function applyAbilityEffect(state, playerIndex, abilityType, target, ctx)
       for (let i = 0; i < NUM_SHOALS; i++) {
         newShoals.push(shuffled.slice(i * CARDS_PER_SHOAL, (i + 1) * CARDS_PER_SHOAL));
       }
-      // 重新保证至少 3 个浅滩顶牌是小阴影（与 gameState 开局逻辑一致）
-      const isSmallTop = (s) => s.length > 0 && CARD_BY_ID[s[0]].strength <= 0;
-      let guard = 0;
-      while (newShoals.filter(isSmallTop).length < 3 && guard++ < 200) {
-        const candidates = newShoals
-          .map((s, i) => ({ s, i }))
-          .filter(({ s }) => !isSmallTop(s) && s.some((id) => CARD_BY_ID[id].strength <= 0));
-        if (candidates.length === 0) {
-          const all = [];
-          for (const s of newShoals) all.push(...s);
-          const reshuffled = rng.shuffle(all);
-          for (let i = 0; i < NUM_SHOALS; i++) {
-            newShoals[i] = reshuffled.slice(i * CARDS_PER_SHOAL, (i + 1) * CARDS_PER_SHOAL);
-          }
-        } else {
-          const { s, i } = candidates[0];
-          newShoals[i] = rng.shuffle(s);
-        }
-      }
+      // 洗乱后同样保证至少 3 个浅滩顶牌是易钓小鱼（与开局逻辑一致、确定性）
+      ensureSmallTops(newShoals, rng);
       state.shoals = newShoals;
       events.push('shuffle_shoals');
       break;

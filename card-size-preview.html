@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>卡牌尺寸预览</title>
+<style>
+  :root {
+    --bg-deep:#081220; --bg-mid:#0d2137; --bg-card:#122a44; --line:#1e3a5f;
+    --text:#dbeafe; --text-dim:#7fa3c9; --text-faint:#4a6a8f;
+    --accent:#2dd4bf; --accent-strong:#14b8a6; --gold:#fbbf24; --foul:#c2410c;
+    --radius:10px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:'PingFang SC','Microsoft YaHei','Noto Sans SC',system-ui,sans-serif;
+    background:radial-gradient(1200px 800px at 50% -10%,#12304f 0%,var(--bg-deep) 55%);
+    color:var(--text); min-height:100vh; padding:32px 20px 60px;
+  }
+  h1 { text-align:center; font-size:26px; letter-spacing:2px; margin-bottom:6px; }
+  .sub { text-align:center; color:var(--text-dim); font-size:14px; margin-bottom:24px; }
+
+  .controls {
+    max-width:720px; margin:0 auto 28px; background:rgba(13,33,55,.75);
+    border:1px solid var(--line); border-radius:14px; padding:18px 20px;
+  }
+  .ctrl-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .ctrl-row label { font-size:14px; color:var(--text-dim); white-space:nowrap; }
+  .slider { flex:1; min-width:180px; accent-color:var(--accent); }
+  .readout { font-size:18px; font-weight:800; color:var(--accent); min-width:120px; }
+  .readout small { font-size:12px; color:var(--text-dim); font-weight:600; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .chip {
+    padding:6px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg-card); color:var(--text-dim); font-size:13px; cursor:pointer;
+    transition:all .15s ease;
+  }
+  .chip:hover { border-color:var(--accent); }
+  .chip.on { background:var(--accent-strong); color:#04211d; border-color:transparent; font-weight:700; }
+
+  .stage { max-width:980px; margin:0 auto; }
+  .stage-title { font-size:14px; color:var(--text-dim); margin-bottom:14px; }
+  .row { display:flex; gap:20px; justify-content:center; align-items:flex-start; flex-wrap:wrap; }
+  .cell { text-align:center; }
+  .cell .cap { margin-top:8px; font-size:12px; color:var(--text-dim); }
+  .cell .cap b { color:var(--text); }
+  .cell.wide .cap { font-size:13px; }
+  .board-note { margin-top:26px; font-size:12.5px; color:var(--text-faint); line-height:1.7; text-align:center; }
+
+  /* —— 复用正式卡牌样式 —— */
+  .card-front {
+    position:relative; border-radius:var(--radius); background-color:var(--bg-card);
+    border:2px solid var(--line); box-shadow:0 4px 10px rgba(0,0,0,.4);
+    overflow:hidden; display:flex; flex-direction:column; flex-shrink:0;
+  }
+  .art-wrap { position:relative; height:50%; min-height:0; background:linear-gradient(160deg,#12304f,#0a1c33); }
+  .art-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+  .info {
+    height:50%; display:flex; flex-direction:column; gap:3px; padding:6px 7px 7px;
+    background:linear-gradient(180deg,rgba(9,21,37,.75),rgba(9,21,37,.35));
+  }
+  .stats { display:flex; align-items:center; justify-content:space-between; gap:4px; flex-shrink:0; }
+  .points { font-size:15px; font-weight:900; color:var(--gold); text-shadow:0 1px 3px #000; white-space:nowrap; }
+  .need,.give { display:flex; align-items:center; gap:1px; font-size:11px; font-weight:700; color:#e0f2fe; white-space:nowrap; }
+  .need .hook,.give .hook { font-size:10px; color:var(--gold); }
+  .name { font-size:12px; font-weight:700; color:#fff; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ability { flex:1; min-height:0; font-size:10px; line-height:1.35; color:#9fc3e8; text-align:center;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+</style>
+</head>
+<body>
+  <h1>卡牌尺寸预览</h1>
+  <div class="sub">拖动滑块实时调整卡面宽度（高度按 2:3 比例），对比不同尺寸在棋盘上的观感</div>
+
+  <div class="controls">
+    <div class="ctrl-row">
+      <label>卡面宽度</label>
+      <input type="range" id="wSlider" class="slider" min="72" max="150" value="110" step="1" />
+      <div class="readout" id="readout">110 × 165<small> · 基准</small></div>
+    </div>
+    <div class="chips" id="chips">
+      <button class="chip" data-w="78">78·移动端</button>
+      <button class="chip" data-w="92">92·现桌面</button>
+      <button class="chip" data-w="104">104·小</button>
+      <button class="chip" data-w="110" data-on="1">110·中▲</button>
+      <button class="chip" data-w="118">118·大</button>
+      <button class="chip" data-w="126">126·特大</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title">三种典型卡：小物(沙丁鱼) / 能力鱼(海鳗) / 终局大鱼(凯尔派)</div>
+    <div class="row" id="board"></div>
+    <div class="board-note">
+      说明：当前桌面基准卡（棋盘浅滩）为 92px 宽；抽出牌展示用 <b>大号卡</b>（120px）。<br />
+      建议基准卡放大到 110px 左右（大号卡随比例放大到约 144px）；移动端（&le;520px）会自动收缩以适配三列浅滩，不会挤压布局。
+    </div>
+  </div>
+
+<script>
+  const SPECS = [
+    { id:'sardine', name:'沙丁鱼', en:'Sardine', points:1, strength:0, hooks:1, ability:null, foul:false },
+    { id:'morayEel', name:'海鳗', en:'Moray Eel', points:4, strength:2, hooks:0, ability:'免疫 · 本回合免疫污秽效果', foul:false },
+    { id:'kelpie', name:'凯尔派', en:'Kelpie', points:7, strength:4, hooks:0, ability:'搅动浅滩 · 洗乱所有浅滩', foul:true },
+  ];
+
+  const board = document.getElementById('board');
+  function renderCard(spec, w) {
+    const h = Math.round(w * 1.5);
+    const card = document.createElement('div');
+    card.className = 'card-front';
+    card.style.width = w + 'px';
+    card.style.height = h + 'px';
+    card.innerHTML = `
+      <div class="art-wrap"><img src="public/cards/${spec.id}.jpg" alt="${spec.name}" /></div>
+      <div class="info">
+        <div class="stats">
+          <span class="points">${spec.points}</span>
+          <span class="give">供钩 <span class="hook">🪝${spec.hooks}</span></span>
+          <span class="need">难度 <span class="hook">🪝${spec.strength}</span></span>
+        </div>
+        <div class="name">${spec.name} ${spec.en}</div>
+        <div class="ability">${spec.ability || ''}</div>
+      </div>`;
+    return card;
+  }
+
+  function apply(w) {
+    board.innerHTML = '';
+    const isMobile = w <= 78;
+    const capSuffix = isMobile ? ' · 移动端' : (w < 100 ? ' · 桌面' : ' · 放大');
+    SPECS.forEach((s, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (isMobile ? ' wide' : '');
+      const prefix = i === 0 ? '小物' : i === 1 ? '能力鱼' : '大鱼';
+      cell.innerHTML = '';
+      cell.appendChild(renderCard(s, w));
+      const cap = document.createElement('div');
+      cap.className = 'cap';
+      cap.innerHTML = `<b>${prefix}</b> ${w}×${Math.round(w*1.5)}${capSuffix}`;
+      cell.appendChild(cap);
+      board.appendChild(cell);
+    });
+  }
+
+  const slider = document.getElementById('wSlider');
+  const readout = document.getElementById('readout');
+  function setReadout(w) {
+    const isPreset = document.querySelector(`.chip[data-w="${w}"]`);
+    readout.innerHTML = w + ' × ' + Math.round(w*1.5) + (isPreset ? '<small> · 基准</small>' : '<small> · 自定义</small>');
+  }
+  slider.addEventListener('input', () => {
+    const w = +slider.value;
+    apply(w); setReadout(w);
+    document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.w === w));
+  });
+  document.getElementById('chips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    const w = +chip.dataset.w;
+    slider.value = w; apply(w); setReadout(w);
+    document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', +c.dataset.w === w));
+  });
+
+  apply(110);
+  slider.value = 110;
+  setReadout(110);
+</script>
+</body>
+</html>

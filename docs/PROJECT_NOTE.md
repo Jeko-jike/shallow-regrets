@@ -120,7 +120,33 @@ shallow-regrets/
    - 约定：新增/更换卡图须放入 `public/cards/` 并命名为 `{artKey}.jpg`；**gh-pages 分支部署必须连同 `cards/` 目录一起提交**，否则线上缺图。
    - 卡背保持 CSS 矢量绘制，无需位图（卡面 img 的 `error` 事件有 `art-fallback` 兜底）。
 
+11. **空浅滩没有卡背 → 整堆需要单独绑点击**
+   - 现象：把牌放回到唯一空浅滩时点不动、放回操作挂在半途（看似卡死）。
+   - 原因：`renderShoals` 只为每张 `card-back` 绑定 `onShoalClick`，**空浅滩没有卡背元素，整堆根本无点击目标**。`getLegalThrowTargets` 正确的只把空浅滩列为放回目标，反而放大了这个交互缺口。
+   - 解决：空浅滩时给 `shoal-stack` 整堆绑定点击（`ui.shoalClickable(i)` 为真时加 `.selectable` 并监听），并加 `.shoal.empty .shoal-stack.selectable` 高亮样式提示可点。
+   - 约定：**渲染层凡"可点但无天然子元素可绑"的实体，必须给容器本身绑点击**并自测。
+
+12. **卡面全幅插画 + 透明文字会脱离 flex 流**
+   - 现象：把 `cf-art-wrap` 和 `cf-info` 都设 absolute overlay 后，卡片内部布局（flex column）不再决定子元素位置。
+   - 解决：`cf-art-wrap` 用 `position:absolute; inset:0` 占满整卡；`cf-info` 用 `position:absolute; left/right/bottom:0; height:50%` 叠于卡面下半。文字可读靠 `text-shadow`（双层）+ `-webkit-text-stroke` 细描边，背景设 transparent。
+   - 约定：全幅卡面渲染时，信息层必须显式定位（absolute）而非依赖 flex 流；改卡面结构后需在多种尺寸下验收文字可读性。
+
 ## 三、任务日志
+
+### 2026-08-28 · 批量维护：卡图/尺寸/开局/文本/卡面/详情/修复/移动端（0.7.0）
+- 卡图压缩：1920×1920 → 512×512 JPEG，全副约 1.2MB，加载显著加速；仍存 `public/cards/{id}.jpg`，构建复制到 `dist/cards/`。
+- 卡片尺寸：基准卡 92×138 → **118×177**，大号抽卡 120×180 → 154×231；移动端（≤520px）100×150 / 130×195，仍适配三列浅滩。预览文件 `card-size-preview.html`（可拖动滑块对比尺寸）。
+  - `css/base.css` 变量、`css/responsive.css` 移动端变量、`css/cards.css` lg 字号、`css/board.css` drawn-area min-height 同步放大。
+- 开局顶牌：`ensureSmallTops` 由"随机洗"改为**确定性跨浅滩交换**（只在不空浅滩间交换、绝不触碰空浅滩 [0]），保证 ≥3 个浅滩顶牌为 strength≤0 的小鱼；`shuffle_shoals` 能力复用同一逻辑。
+  - 修复交换处**小牌被覆盖丢失、顶牌拿到重复大牌**的数据损坏 Bug：交换前先保存小牌值。
+  - 回归：`tests/core/gameState.test.js` 新增 2000 种子断言"顶牌数 ≥3 且整副 18 张不重复不丢失"。
+- 数字置于单位/emoji 前：卡面 `需⚓5→需5⚓`、`供⚓1→供1⚓`；玩家条 `⚓5→5⚓`；钓获区 `⚓ n 钩→n⚓ 钩`（`render.js`）。
+- 卡面文字浮于卡图上、背景透明：`cf-art-wrap` 占满整卡（absolute inset 0），`cf-info` 半透明叠于卡面下半（absolute bottom），用文字阴影 + 细描边保证可读（`cards.css`）。
+- 新功能「卡牌详情」：点击卡面（抽出牌 / 钓获区）弹出详情（大图 + 能力 + 数值）；能力阶段中可发动的己方能力鱼，详情内出现「发动能力」按钮。目标选择流程（偷看/横置/交换）点击仍用于选目标（`main.js` showCardDetail + `render.js` onCardInfo + `modal.css`）。
+- 空浅滩无法放回卡死修复：`renderShoals` 原只为卡背绑定点击，空浅滩无卡背 → 点不动。现空浅滩整堆可点（`.shoal-stack.selectable` + 高亮样式）。
+  - 回归：`tests/ui/main.test.js` 新增空浅滩可点测试。
+- 移动端 UI：`跳过能力阶段` 按钮从操作条移至抽出牌区下方（玩家区上方），桌面端同步移动（`render.js` renderDrawn dc-skip + `board.css`），已同步测试选择器。
+- 测试 134 例全绿（16 文件），`npm run build` 通过且 dist 完全内联。
 
 ### 2026-08-25 · 批量修复与 UI 优化（0.6.0）
 - 抽牌选牌交互修复：原可实现无限多选超上限 → 确认按钮永久禁用、卡死在抽牌回合。现以"本回合应抽数"为总上限、点击已选浅滩可取消、提供"清空重选"、提示 `已选 x/y`（`js/ui/boardInteraction.js` + `interaction.js`）。
@@ -194,6 +220,7 @@ shallow-regrets/
 3. ✅ 卡图本地方案（0.6.1）：18 张卡图已生成并纳入 `public/cards/`，`getArtUrl` 返回本地相对路径；`dist/cards/` 随构建输出。
 4. ✅ 部署：`main`（源码）与 `gh-pages`（产物 + `cards/`）均含本次更新；晋升需用 worktree 提交 gh-pages（含图片目录）。
 5. ⏳ 待办提醒：`docs/ASSETS.md` 仍写 "assets/ 为空（当前 UI 纯 CSS）"，现卡图为 `public/cards/`，后续修档时请同步更正；卡图所有权 / 许可声明如需注明生成工具，请补到 ASSETS.md。
+6. ✅ 0.7.0 批量维护已合并（卡图压缩 / 卡面全幅透明 / 尺寸 118px / 卡片详情 / 空浅滩放回 / 数字前置 / 移动端跳过按钮）；134 测试全绿、build 通过；`card-size-preview.html` 为临时预览文件，定稿后可从仓库移除或保留为工具。
 
 ## 五、关键决策记录（ADR 简版）
 

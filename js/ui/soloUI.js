@@ -141,6 +141,8 @@ function renderAll() {
     canCatch: (cardId) => canCatch(s, s.currentPlayer, cardId) && !s.caughtThisTurn,
     onCatch: interaction.onCatch,
     onThrowClick: interaction.onThrowClick,
+    onPassAbilities: interaction.onPassAbilities,
+    onCardInfo: (cardId) => interaction.showCardDetail?.(cardId),
   });
   render.renderCaught($('playersCaught'), s, ui, { onFishClick: interaction.onFishClick });
   render.renderActionBar($('actionBar'), s, ui, {

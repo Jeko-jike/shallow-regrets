@@ -26,10 +26,10 @@
 
 @media (max-width: 520px) {
   :root {
-    --card-w: 78px;
-    --card-h: 116px;
-    --card-w-lg: 100px;
-    --card-h-lg: 150px;
+    --card-w: 100px;
+    --card-h: 150px;
+    --card-w-lg: 130px;
+    --card-h-lg: 195px;
   }
 
   .game-screen {

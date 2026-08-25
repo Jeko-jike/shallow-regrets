@@ -7,6 +7,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import * as render from '../../js/ui/render.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(__dirname, '..', '..', 'index.html'), 'utf-8');
@@ -55,8 +56,8 @@ describe('M1 本地热座', () => {
     click($('#tcBtn'));
     expect($('#turnCover').style.display).toBe('none');
 
-    // 4. 能力阶段：跳过
-    clickText('#actionBar .btn', '跳过能力阶段');
+    // 4. 能力阶段：跳过（按钮位于抽出牌区下方）
+    clickText('.dc-skip', '跳过能力阶段');
     expect($('#turnInfo').textContent).toContain('抽牌阶段');
 
     // 5. 抽牌阶段：选 2 个浅滩 → 确认按钮启用
@@ -113,7 +114,7 @@ describe('M1 本地热座', () => {
       expect($('#turnCover').style.display).not.toBe('flex');
 
       // 玩家回合：跳过能力 → 选 2 浅滩 → 确认抽牌 → 钓走/放回
-      clickText('#actionBar .btn', '跳过能力阶段');
+      clickText('.dc-skip', '跳过能力阶段');
       click($$('#shoalsRow .shoal')[0].querySelector('.card-back'));
       click($$('#shoalsRow .shoal')[1].querySelector('.card-back'));
       clickText('#actionBar .btn', '确认抽牌');
@@ -145,5 +146,38 @@ describe('M1 本地热座', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('render：回归——空浅滩可作为放回目标被点击', () => {
+  it('空浅滩可点时会整堆高亮并可触发 onShoalClick（不卡死）', () => {
+    const state = {
+      shoals: [
+        ['sardine', 'clownfish', 'pufferfish'],
+        [], // 空浅滩（唯一放回目标）
+        ['kraken'],
+        ['jellyfish'],
+        ['lamprey', 'foot'],
+        [],
+      ],
+      turn: 1,
+      currentPlayer: 0,
+      phase: 'catch',
+      drawn: [],
+      players: [],
+    };
+    const hits = [];
+    const el = document.createElement('div');
+    render.renderShoals(
+      el,
+      state,
+      { shoalClickable: (i) => i === 1 || i === 5, canInteract: true },
+      { onShoalClick: (i) => hits.push(i) },
+    );
+    // 空浅滩【1】被标记为可点目标
+    const clickableEmpty = el.querySelector('.shoal.empty .shoal-stack.selectable');
+    expect(clickableEmpty).toBeTruthy();
+    click(clickableEmpty);
+    expect(hits).toContain(1);
   });
 });

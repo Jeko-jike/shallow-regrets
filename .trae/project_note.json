@@ -58,11 +58,11 @@
     "卡图一律本地方案：public/cards/{id}.jpg + getArtUrl 返回相对路径，与网络解耦"
   ],
   "recent_changes": [
+    { "date": "2026-08-26", "change": "根治'卡背徽标与实际抽到的牌不对应'：根因是 renderShoals 堆叠渲染层序反了——原先 for k=0.. 依次 append，DOM 后 append 的在上面，导致视觉最上层是栈底(shoal[length-1])而非顶牌(shoal[0])，而抽牌 shift 取的是 shoal[0]，两边错位。玩家看到'3-5/1-2'卡背抽到的却是 0 难度小鱼；开局也只显示 1 个 0 难度浅滩（小鱼被 ensureSmallTops 换到栈顶但视觉看不到）。修复：渲染循环改倒序 for k=show-1..0，让 shoal[0] 位于视觉最上层。经 100 万种子扫描佐证（用真实顶牌算模式 0 命中、用栈底算命中 11916）；seed=16 实测修复前 1-2/1-2/1-2/3-5/0/1-2 → 修复后 0/0/3-5/0/0/1-2（4 个 0，符合 MIN_SMALL_TOPS=4）。新增 renderShoals 层序单测（视觉最上层=顶牌）与整局防线测试 tests/defense/shoalBadgeInvariant.test.js。141 测试全绿。", "impact": "js/ui/render.js(倒序渲染)、tests/ui/main.test.js(层序测试)、tests/defense/shoalBadgeInvariant.test.js(整局防线)；dist 重建" },
     { "date": "2026-08-26", "change": "卡背难度区间改为固定三段 0 / 1-2 / 3-5（strength 0 的卡背由'0-1'改为显示'0'，消除歧义区间）；补测锁定'每张卡背分段来自该浅滩位置的真实卡、且必含自身 strength'的一一对应不变式——遍历全部 18 张卡断言各段含自身钩数、新增 renderShoals 单测断言克拉肯(strength5)卡背为 3-5、沙丁鱼(strength0)卡背为 0；开局≥3个strength0浅滩已由 MIN_SMALL_TOPS=4 保证无需改。138 测试全绿，dist 重建确认 0-1 字面量已消失。", "impact": "js/ui/render.js(difficultyRange+提示文案)、js/core/gameState.js(注释)、tests/ui/main.test.js；dist 重建" },
     { "date": "2026-08-26", "change": "一键启动 bat 修复（两版迭代）：①初版重编码 GBK 仍不稳，终稿改为纯 ASCII 英文——bat 内不出现任何中文，任意代码页都能可靠解析，彻底消除'xxx 不是内部或外部命令/xxx was unexpected'闪退；并修掉联网 bat 里 else 块中未转义 ')' 导致块提前截断的硬 bug（echo 改用 1. 2. 而非 1) 2)）。②npm run build 重建 dist，使此前未提交的 MIN_SMALL_TOPS=4 与卡背难度固定分段真正生效，解决'开局<3个0-1浅滩'与'卡背0-1但翻开不符'（2000 种子诊断 0 例）。补 difficultyRange 单测锁定不变式，137 测试全绿。", "impact": "一键启动本地/联网游戏.bat(纯ASCII+CRLF+无BOM、无中文)；联网 bat 修复 else 块未转义 )；dist 重建(main 忽略不追踪)；可双击游玩修复后版本" },
     { "date": "2026-08-25", "change": "本轮维护：①已钓鱼全部可点击查看详情（含无能力鱼、已横置能力鱼），能力选目标时仍优先当目标；②卡图 512→256px，总量 1200→340KB，卡面 <img> 加 lazy+async；③初始易钓顶牌 MIN_SMALL_TOPS 3→4（实测 5000 种子稳定 4-5 张强度 0）；④卡背难度区间改为固定分段（0→0-1，1/2→1-2，3/4/5→3-5）；⑤阶段按钮（跳过/确认抽牌/清空重选/取消放回）统一定位于 .dc-ctx（抽出牌下方）；⑥PC(≥861px) 浅滩卡 118→132px、间距 10→6px。用户要求【取消维护 docs/PROJECT_NOTE.md】，改由本 project_note.json 承接项目状态。", "impact": "js/ui/render.js、main.js、soloUI.js、css/cards|board|responsive、js/core/gameState.js、public/cards；135 测试全绿，生成 PROJECT_NOTE 迁移快照" },
-    { "date": "2026-08-28", "change": "部署 v0.7.0 与构建产物追踪清理：main(源码)→gh-pages(产物+cards/)；git rm -r --cached dist 移除索引残留，改 .gitignore 只影响未跟踪文件。", "impact": "main 分支完全忽略 dist/；部署流程 = 源分支 build → worktree 替换 index.html+cards/ → 提交推送 → worktree remove" },
-    { "date": "2026-08-28", "change": "批量维护 0.7.0：卡图压缩至 512px；卡尺寸 118×177；开局确定性交换保证≥3 易钓顶牌；数字前置；卡面全幅透明文字；卡牌详情弹窗；空浅滩放回修复；移动端跳过按钮下移。", "impact": "135 测试全绿；card-size-preview.html 为临时预览工具" }
+    { "date": "2026-08-28", "change": "部署 v0.7.0 与构建产物追踪清理：main(源码)→gh-pages(产物+cards/)；git rm -r --cached dist 移除索引残留，改 .gitignore 只影响未跟踪文件。", "impact": "main 分支完全忽略 dist/；部署流程 = 源分支 build → worktree 替换 index.html+cards/ → 提交推送 → worktree remove" }
   ],
   "known_issues": [
     { "id": 1, "description": "docs/ASSETS.md 仍写 'assets/ 为空（当前 UI 纯 CSS）'，与实际 public/cards/ 卡图不符；卡图所有权/许可/生成工具需补登记。", "status": "open", "priority": "medium" },
@@ -79,7 +79,8 @@
     "全幅卡面信息层必须显式定位(absolute)而非依赖 flex；文字用 text-shadow+描边保证可读",
     ".gitignore 只影响未跟踪文件；改它不能清除已跟踪文件，须先 git rm --cached。构建产物 main 不跟踪、gh-pages 独家部署",
     "任何'玩家动作推进到对方回合'的控制器，dispatch 后须检查是否轮到脚本并就绪调度",
-    "阶段按钮已统一定位在 .dc-ctx（抽出牌下方），改动其选择器/文案须同步 main.test.js 与 soloUI.test.js"
+    "阶段按钮已统一定位在 .dc-ctx（抽出牌下方），改动其选择器/文案须同步 main.test.js 与 soloUI.test.js",
+       "浅滩堆叠渲染必须倒序 append（for k=show-1..0）让 shoal[0] 顶牌在视觉最上层；DOM 后 append 在上层，若正序渲染则视觉顶牌=栈底，与实际抽牌(shift取shoal[0])错位。层序回归看 tests/ui/main.test.js 的 renderShoals 层序测试"
     ,"一键启动*.bat 必须为纯 ASCII（仅英文提示、不含任何中文）+ CRLF；bat 内出现中文在任意代码页下都可能致 cmd 解析崩坏（双击无反应/闪退），需要中文提示请放到游戏页或 README。另：echo 出现在 if/for 块内时禁止裸 ')'（用 1. 2. 或 ^)）以免块提前截断"
   ],
   "api_details": {

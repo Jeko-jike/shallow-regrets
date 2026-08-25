@@ -159,7 +159,10 @@ export function renderShoals(el, state, ui, handlers) {
       }
     } else {
       const show = Math.min(shoal.length, 3);
-      for (let k = 0; k < show; k++) {
+      // 注意：shoal[0] 是顶牌（stateMachine 用 shift 抽走 shoal[0]）。
+      // 堆叠渲染必须倒序 append（从底到顶），让 shoal[0] 位于视觉最上层，
+      // 否则玩家看到的"顶牌卡背"其实是栈底的鱼，与实际抽到的牌完全错位。
+      for (let k = show - 1; k >= 0; k--) {
         const back = document.createElement('div');
         back.className = 'card-back';
         // 卡背显示该卡难度的模糊区间（如难度 4 → "3-5"）

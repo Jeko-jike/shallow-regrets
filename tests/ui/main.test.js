@@ -216,4 +216,21 @@ describe('卡背难度区间 difficultyRange（固定三段）', () => {
     expect(render.difficultyRange(CARD_BY_ID.kraken.strength)).toBe('3-5');
     expect(render.difficultyRange(CARD_BY_ID.sardine.strength)).toBe('0');
   });
+
+  it('renderShoals 层序：视觉最上层的卡背 = shoal[0]（顶牌），而非栈底', () => {
+    // shoal = [沙丁鱼(0), 海鳗(2), 克拉肯(5)]
+    // 顶牌（会被抽到的）是沙丁鱼 → 视觉最上层应显示 "0"
+    // 如果层序反了，最上层会是克拉肯 → 显示 "3-5"（即截图里的 bug）
+    const state = { shoals: [['sardine', 'morayEel', 'kraken']] };
+    const el = document.createElement('div');
+    render.renderShoals(el, state, { shoalClickable: () => false }, {});
+    const backs = Array.from(el.querySelectorAll('.shoal-stack .card-back'));
+    expect(backs.length).toBe(3);
+    // DOM 顺序即视觉叠放顺序：最后一个元素在最上层
+    const topBack = backs[backs.length - 1];
+    expect(topBack.querySelector('.cb-range').textContent).toBe('0');
+    // 再核对各层：第 1 个（最底）应是克拉肯(5) "3-5"，中间海鳗(2) "1-2"，最顶沙丁鱼(0) "0"
+    const badges = backs.map((b) => b.querySelector('.cb-range').textContent);
+    expect(badges).toEqual(['3-5', '1-2', '0']);
+  });
 });

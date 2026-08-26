@@ -111,7 +111,7 @@ describe('protocol: 状态快照', () => {
       drawn: [],
       drawnFrom: [],
       extraDraw: 0,
-      caughtThisTurn: false,
+      caughtThisTurn: 0,
       lastPeek: { player: 0, shoalIndex: 1, cardId: 'clownfish' },
       actions: [{ player: 0, turn: 1, action: { type: 'PASS_ABILITIES' } }],
       gameOver: false,

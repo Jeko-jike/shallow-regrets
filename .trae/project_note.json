@@ -1,6 +1,6 @@
 {
   "quick_ref": {
-    "summary": "《浅滩鱼悔》Shallow Regrets 网页卡牌小游戏：M1 本地对战 / M2 单人 AI / M3 联机 / M4 AI 斗蛐蛐观战 / M5 Solo 挑战，深色海洋恐怖主题单页应用（18 张鱼卡，纯函数状态机）。",
+    "summary": "《浅滩鱼悔》Shallow Regrets 网页卡牌小游戏：M1 本地对战 / M2 单人 AI / M3 联机 / M4 AI 斗蛐蛐观战 / M5 Solo 挑战，深色海洋恐怖主题单页应用（24 张鱼卡，6 浅滩 × 4 张，纯函数状态机）。",
     "tech": [
       "HTML5",
       "CSS3",
@@ -31,18 +31,18 @@
     "key_files": [
       { "path": "index.html", "purpose": "单页入口：首页五模式 / 联机大厅 / 对局页（含 M4 观战面板与 M5 Solo 面板）/ 结算页", "last_updated": "2026-08-25" },
       { "path": "js/main.js", "purpose": "前端入口：模式路由、对局控制器、M3 联机会话、点击事件绑定", "last_updated": "2026-08-25" },
-      { "path": "js/core/cards.js", "purpose": "18 张卡唯一数据源（含 strength 所需钩数 与 hooks 提供钩数）", "last_updated": "2026-08-25" },
-      { "path": "js/core/gameState.js", "purpose": "初始状态 / 不可变更新 / getHooks / ensureSmallTops（保证开局易钓顶牌）", "last_updated": "2026-08-25" },
-      { "path": "js/core/stateMachine.js", "purpose": "状态机 PHASE/ACTION、validateAction、applyAction", "last_updated": "2026-08-25" },
-      { "path": "js/core/rules.js", "purpose": "取牌合法性 / 强度判定 / 放生 / 终局判定", "last_updated": "2026-08-25" },
-      { "path": "js/core/abilities.js", "purpose": "六种能力效果纯函数表 + 目标校验 + 确定性随机", "last_updated": "2026-08-25" },
+      { "path": "js/core/cards.js", "purpose": "24 张卡唯一数据源（含 strength 所需钩数 与 hooks 提供钩数）", "last_updated": "2026-08-26" },
+      { "path": "js/core/gameState.js", "purpose": "初始状态 / 不可变更新 / getHooks / ensureSmallTops（保证开局易钓顶牌）", "last_updated": "2026-08-26" },
+      { "path": "js/core/stateMachine.js", "purpose": "状态机 PHASE/ACTION、validateAction、applyAction", "last_updated": "2026-08-26" },
+      { "path": "js/core/rules.js", "purpose": "取牌合法性 / 强度判定 / 放生 / 终局判定 / getCatchLimit", "last_updated": "2026-08-26" },
+      { "path": "js/core/abilities.js", "purpose": "24 种能力效果纯函数表 + 目标校验 + 确定性随机", "last_updated": "2026-08-26" },
       { "path": "js/ui/render.js", "purpose": "浅滩 / 抽出牌 / 钓获区 / 结算渲染；buildCardFront；卡背难度区间(0/1-2/3-5 固定三段)；阶段按钮 .dc-ctx", "last_updated": "2026-08-26" },
-      { "path": "js/ui/interaction.js", "purpose": "交互计算（可点性/提示/buildBoardUi 共享棋盘 UI 描述）", "last_updated": "2026-08-25" },
-      { "path": "js/ui/boardInteraction.js", "purpose": "玩家棋盘点击处理（M1/M2/M3/M5 共用，工厂注入 getState/getUi/dispatch/renderAll）", "last_updated": "2026-08-25" },
+      { "path": "js/ui/interaction.js", "purpose": "交互计算（可点性/提示/buildBoardUi 共享棋盘 UI 描述）", "last_updated": "2026-08-26" },
+      { "path": "js/ui/boardInteraction.js", "purpose": "玩家棋盘点击处理（M1/M2/M3/M5 共用，工厂注入 getState/getUi/dispatch/renderAll）", "last_updated": "2026-08-26" },
       { "path": "js/solo/soloScript.js", "purpose": "M5 脚本对手：6 张固定目标卡 + 确定性剧本（纯函数）", "last_updated": "2026-08-25" },
       { "path": "js/spectate/spectate.js", "purpose": "M4 SpectateController：回合调度 / 自动手动 / 速度档位 / 回放", "last_updated": "2026-08-25" },
       { "path": "server/server.js", "purpose": "Socket.IO 联机服务端入口：静态托管 + Socket.IO", "last_updated": "2026-08-25" },
-      { "path": "public/cards/*.jpg", "purpose": "18 张本地卡图（256px JPEG，全副约 340KB），getArtUrl 返回相对路径 cards/{id}.jpg", "last_updated": "2026-08-25" },
+      { "path": "public/cards/*.jpg", "purpose": "24 张本地卡图（竖版高清 JPG），getArtUrl 返回相对路径 cards/{id}.jpg", "last_updated": "2026-08-26" },
       { "path": "tools/inline-build.mjs", "purpose": "构建后内联 JS/CSS 到 dist/index.html（可双击离线运行）", "last_updated": "2026-08-25" }
     ],
     "architecture": "依赖方向仅 ui→core（只读状态、派发动作）；core 纯逻辑不下探 DOM；net 只依赖 core 协议与状态机；server 复用 core 不被反向依赖；禁止循环依赖。状态快照可序列化。M3 主机权威：服务端复用 stateMachine 校验并广播，本地客户端不自行推进。部署：source 分支不跟踪 dist/，产物由 gh-pages 分支独家托管。"
@@ -58,10 +58,10 @@
     "卡图一律本地方案：public/cards/{id}.jpg + getArtUrl 返回相对路径，与网络解耦"
   ],
   "recent_changes": [
+    { "date": "2026-08-26", "change": "修复 4 个 bug：①点击可发动能力的牌不再跳过详情（boardInteraction 一律先开详情弹窗，能力按钮在详情内）；②腐鱼卡死根治（modal.js 增加 replacedDuringClick，onClick 内新弹窗不被 closeModal 立即关闭）；③梭子鱼可移除对方已钓的难度0牌（remove_zero 目标扩展 {playerIndex,cardId}，UI 支持点浅滩或对方已钓区，AI 优先削弱对手）；④额外抽牌卡改「看2+n 摸 n+1」（caughtThisTurn 布尔→计数器，上限=1+extraDraw，皇带鱼看4摸3/七鳃鳗看3摸2，AI/Solo/冒烟多钓走适配）。另修复 AI 断脚(give_card)未避开雪鳗护体导致的死循环。163 测试全绿，dist 重建。", "impact": "js/core/{abilities,rules,gameState,stateMachine}.js、js/ui/{interaction,boardInteraction,modal,soloUI}.js、js/{main,ai/heuristicAI,solo/soloScript}.js、tools/_smoke.mjs、tests/*；dist 重建" },
     { "date": "2026-08-26", "change": "根治'卡背徽标与实际抽到的牌不对应'：根因是 renderShoals 堆叠渲染层序反了——原先 for k=0.. 依次 append，DOM 后 append 的在上面，导致视觉最上层是栈底(shoal[length-1])而非顶牌(shoal[0])，而抽牌 shift 取的是 shoal[0]，两边错位。玩家看到'3-5/1-2'卡背抽到的却是 0 难度小鱼；开局也只显示 1 个 0 难度浅滩（小鱼被 ensureSmallTops 换到栈顶但视觉看不到）。修复：渲染循环改倒序 for k=show-1..0，让 shoal[0] 位于视觉最上层。经 100 万种子扫描佐证（用真实顶牌算模式 0 命中、用栈底算命中 11916）；seed=16 实测修复前 1-2/1-2/1-2/3-5/0/1-2 → 修复后 0/0/3-5/0/0/1-2（4 个 0，符合 MIN_SMALL_TOPS=4）。新增 renderShoals 层序单测（视觉最上层=顶牌）与整局防线测试 tests/defense/shoalBadgeInvariant.test.js。141 测试全绿。", "impact": "js/ui/render.js(倒序渲染)、tests/ui/main.test.js(层序测试)、tests/defense/shoalBadgeInvariant.test.js(整局防线)；dist 重建" },
     { "date": "2026-08-26", "change": "卡背难度区间改为固定三段 0 / 1-2 / 3-5（strength 0 的卡背由'0-1'改为显示'0'，消除歧义区间）；补测锁定'每张卡背分段来自该浅滩位置的真实卡、且必含自身 strength'的一一对应不变式——遍历全部 18 张卡断言各段含自身钩数、新增 renderShoals 单测断言克拉肯(strength5)卡背为 3-5、沙丁鱼(strength0)卡背为 0；开局≥3个strength0浅滩已由 MIN_SMALL_TOPS=4 保证无需改。138 测试全绿，dist 重建确认 0-1 字面量已消失。", "impact": "js/ui/render.js(difficultyRange+提示文案)、js/core/gameState.js(注释)、tests/ui/main.test.js；dist 重建" },
     { "date": "2026-08-26", "change": "一键启动 bat 修复（两版迭代）：①初版重编码 GBK 仍不稳，终稿改为纯 ASCII 英文——bat 内不出现任何中文，任意代码页都能可靠解析，彻底消除'xxx 不是内部或外部命令/xxx was unexpected'闪退；并修掉联网 bat 里 else 块中未转义 ')' 导致块提前截断的硬 bug（echo 改用 1. 2. 而非 1) 2)）。②npm run build 重建 dist，使此前未提交的 MIN_SMALL_TOPS=4 与卡背难度固定分段真正生效，解决'开局<3个0-1浅滩'与'卡背0-1但翻开不符'（2000 种子诊断 0 例）。补 difficultyRange 单测锁定不变式，137 测试全绿。", "impact": "一键启动本地/联网游戏.bat(纯ASCII+CRLF+无BOM、无中文)；联网 bat 修复 else 块未转义 )；dist 重建(main 忽略不追踪)；可双击游玩修复后版本" },
-    { "date": "2026-08-25", "change": "本轮维护：①已钓鱼全部可点击查看详情（含无能力鱼、已横置能力鱼），能力选目标时仍优先当目标；②卡图 512→256px，总量 1200→340KB，卡面 <img> 加 lazy+async；③初始易钓顶牌 MIN_SMALL_TOPS 3→4（实测 5000 种子稳定 4-5 张强度 0）；④卡背难度区间改为固定分段（0→0-1，1/2→1-2，3/4/5→3-5）；⑤阶段按钮（跳过/确认抽牌/清空重选/取消放回）统一定位于 .dc-ctx（抽出牌下方）；⑥PC(≥861px) 浅滩卡 118→132px、间距 10→6px。用户要求【取消维护 docs/PROJECT_NOTE.md】，改由本 project_note.json 承接项目状态。", "impact": "js/ui/render.js、main.js、soloUI.js、css/cards|board|responsive、js/core/gameState.js、public/cards；135 测试全绿，生成 PROJECT_NOTE 迁移快照" },
     { "date": "2026-08-28", "change": "部署 v0.7.0 与构建产物追踪清理：main(源码)→gh-pages(产物+cards/)；git rm -r --cached dist 移除索引残留，改 .gitignore 只影响未跟踪文件。", "impact": "main 分支完全忽略 dist/；部署流程 = 源分支 build → worktree 替换 index.html+cards/ → 提交推送 → worktree remove" }
   ],
   "known_issues": [
@@ -81,7 +81,9 @@
     "任何'玩家动作推进到对方回合'的控制器，dispatch 后须检查是否轮到脚本并就绪调度",
     "阶段按钮已统一定位在 .dc-ctx（抽出牌下方），改动其选择器/文案须同步 main.test.js 与 soloUI.test.js",
        "浅滩堆叠渲染必须倒序 append（for k=show-1..0）让 shoal[0] 顶牌在视觉最上层；DOM 后 append 在上层，若正序渲染则视觉顶牌=栈底，与实际抽牌(shift取shoal[0])错位。层序回归看 tests/ui/main.test.js 的 renderShoals 层序测试"
-    ,"一键启动*.bat 必须为纯 ASCII（仅英文提示、不含任何中文）+ CRLF；bat 内出现中文在任意代码页下都可能致 cmd 解析崩坏（双击无反应/闪退），需要中文提示请放到游戏页或 README。另：echo 出现在 if/for 块内时禁止裸 ')'（用 1. 2. 或 ^)）以免块提前截断"
+    ,"一键启动*.bat 必须为纯 ASCII（仅英文提示、不含任何中文）+ CRLF；bat 内出现中文在任意代码页下都可能致 cmd 解析崩坏（双击无反应/闪退），需要中文提示请放到游戏页或 README。另：echo 出现在 if/for 块内时禁止裸 ')'（用 1. 2. 或 ^)）以免块提前截断",
+    "UI 每浅滩只渲染顶部 3 张（开局 6×3=18 可见），底层第 4 张仍在牌堆中随抽牌露出；RULES.md 仍写 18 张旧版，勿据此判断牌数",
+    "caughtThisTurn 是计数器（上限 1+extraDraw，见 getCatchLimit），任何布尔判断（!caughtThisTurn）都会失效，须用 ===0 / <getCatchLimit"
   ],
   "api_details": {
     "endpoints": [

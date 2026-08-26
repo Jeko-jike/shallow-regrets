@@ -12,12 +12,16 @@ const toastEl = document.getElementById('toast');
 
 let toastTimer = null;
 let onCloseHandler = null;
+// 按钮 onClick 期间是否又打开了新弹窗（如 pending 反应窗口接力）。
+// 若为 true，则本次按钮处理结束后不应 closeModal，否则会立即关掉刚弹出的新弹窗导致游戏卡死。
+let replacedDuringClick = false;
 
 /**
  * 打开弹窗。
  * @param {{title?:string, body?:string|Node, actions?:Array<{text:string, className?:string, onClick?:Function, close?:boolean}>, onClose?:Function}} opts
  */
 export function showModal({ title = '', body = '', actions = [], onClose } = {}) {
+  replacedDuringClick = true;
   titleEl.textContent = title;
   bodyEl.innerHTML = '';
   if (typeof body === 'string') {
@@ -31,8 +35,9 @@ export function showModal({ title = '', body = '', actions = [], onClose } = {})
     btn.className = `btn ${a.className || ''}`.trim();
     btn.textContent = a.text || '确定';
     btn.addEventListener('click', () => {
+      replacedDuringClick = false;
       if (a.onClick) a.onClick();
-      if (a.close !== false) closeModal();
+      if (a.close !== false && !replacedDuringClick) closeModal();
     });
     actionsEl.appendChild(btn);
   }
@@ -88,7 +93,7 @@ const RULES_HTML = `
   <ul>
     <li><strong>能力阶段</strong>：可发动任意数量已钓能力鱼的能力（每次发动后该鱼横置，整局仅一次）。</li>
     <li><strong>抽牌</strong>：从任意浅滩取 2 张（可同一或不同浅滩）。</li>
-    <li><strong>钓走/放回</strong>：若钩数足够，钓走 1 张；其余放回浅滩。每回合最多钓 1 条。</li>
+    <li><strong>钓走/放回</strong>：若钩数足够，每回合默认钓走 1 张；其余放回浅滩。发动额外抽牌能力（皇带鱼+2 / 七鳃鳗+1）后，本回合可保留的牌数提升为 n+1（看 2+n 摸 n+1）。</li>
   </ul>
   <h4>钩数</h4>
   <p>初始钩数 0；钓到的鱼会提供钩数（小鱼 1 钩，越大越多），当前钩数 = 已钓获鱼提供的钩数之和，用于满足更强鱼的要求。</p>

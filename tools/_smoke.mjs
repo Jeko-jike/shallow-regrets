@@ -1,6 +1,6 @@
 import { createInitialState } from '../js/core/gameState.js';
 import { applyAction, PHASE, ACTION } from '../js/core/stateMachine.js';
-import { getCatchableDrawn, getDrawableShoals, getLegalThrowTargets, canCatch } from '../js/core/rules.js';
+import { getCatchableDrawn, getDrawableShoals, getLegalThrowTargets, canCatch, getCatchLimit } from '../js/core/rules.js';
 
 function chooseDraw(s, n) {
   const cur = s.currentPlayer;
@@ -52,7 +52,7 @@ function runGreen(seed, names) {
       r = applyAction(s, { type: ACTION.DRAW, from: chooseDraw(s, n) });
     } else if (s.phase === PHASE.CATCH) {
       const catchable = getCatchableDrawn(s);
-      if (catchable.length && !s.caughtThisTurn) {
+      if (catchable.length && s.caughtThisTurn < getCatchLimit(s)) {
         r = applyAction(s, { type: ACTION.CATCH, cardId: catchable[0] });
       } else {
         const drawnPick = s.drawn[0];

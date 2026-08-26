@@ -42,8 +42,8 @@ export const ABILITY_TYPES = {
 };
 
 export const ABILITIES = {
-  draw_plus2: { kind: 'active', amount: 2, schema: null, desc: '本回合额外抽 2 张牌' },
-  draw_plus1: { kind: 'active', amount: 1, schema: null, desc: '本回合额外抽 1 张牌' },
+  draw_plus2: { kind: 'active', amount: 2, schema: null, desc: '本回合额外抽 2 张牌，可保留 3 条（看 4 摸 3）' },
+  draw_plus1: { kind: 'active', amount: 1, schema: null, desc: '本回合额外抽 1 张牌，可保留 2 条（看 3 摸 2）' },
   power_plus3: { kind: 'active', amount: 3, schema: null, desc: '本回合你的力量增加 3' },
   exhaust_foul: { kind: 'active', schema: { playerIndex: 'number', cardId: 'string' }, typeFilter: 'foul', desc: '横置另一位玩家的一条邪秽鱼' },
   exhaust_fair: { kind: 'active', schema: { playerIndex: 'number', cardId: 'string' }, typeFilter: 'fair', desc: '横置另一位玩家的一条正品鱼' },
@@ -57,7 +57,7 @@ export const ABILITIES = {
   snow_guard: { kind: 'active', schema: null, desc: '直到你下个回合前，能力不能影响你' },
   give_card: { kind: 'active', schema: { playerIndex: 'number' }, desc: '将这条鱼交给另一位玩家' },
   pass_left: { kind: 'active', schema: null, desc: '所有玩家将一条鱼传给左边的玩家' },
-  remove_zero: { kind: 'active', schema: { shoalIndex: 'number', cardIndex: 'number' }, desc: '将一张难度 0 的鱼牌移除游戏' },
+  remove_zero: { kind: 'active', schema: { shoalIndex: 'number', cardIndex: 'number', playerIndex: 'number', cardId: 'string' }, desc: '将一张难度 0 的鱼牌移除游戏（浅滩或对方已钓区）' },
   rearrange_shoal: { kind: 'active', schema: { shoalIndex: 'number' }, desc: '查看一个鱼群的所有牌，并以任意顺序放回' },
   catch_restrict_zero: { kind: 'passive', desc: '你不能捕捉难度为 0 的鱼' },
   catch_restrict_high: { kind: 'passive', desc: '有其他可选的鱼时，你不能捕捉难度 ≥3 的鱼' },
@@ -188,13 +188,24 @@ export function validateAbilityTarget(state, playerIndex, abilityKey, target) {
     }
 
     case ABILITY_TYPES.REMOVE_ZERO: {
-      if (!target || typeof target.shoalIndex !== 'number' || typeof target.cardIndex !== 'number') {
-        return '需要指定一张难度 0 的鱼牌的所在堆与位置';
+      // 目标 A：浅滩中的难度 0 牌 { shoalIndex, cardIndex }
+      if (target && typeof target.shoalIndex === 'number' && typeof target.cardIndex === 'number') {
+        const s = state.shoals[target.shoalIndex];
+        if (!s || target.cardIndex < 0 || target.cardIndex >= s.length) return '鱼群位置越界';
+        if (CARD_BY_ID[s[target.cardIndex]].strength !== 0) return '只能移除难度 0 的鱼牌';
+        return null;
       }
-      const s = state.shoals[target.shoalIndex];
-      if (!s || target.cardIndex < 0 || target.cardIndex >= s.length) return '鱼群位置越界';
-      if (CARD_BY_ID[s[target.cardIndex]].strength !== 0) return '只能移除难度 0 的鱼牌';
-      return null;
+      // 目标 B：对方已钓的难度 0 牌 { playerIndex, cardId }
+      if (target && typeof target.playerIndex === 'number' && typeof target.cardId === 'string') {
+        const tp = target.playerIndex;
+        if (tp === playerIndex) return '不能移除自己的鱼';
+        if (tp < 0 || tp >= state.players.length) return '玩家索引越界';
+        const opp = state.players[tp];
+        if (!playerHasCard(opp, target.cardId)) return '对方没有这条鱼';
+        if (CARD_BY_ID[target.cardId].strength !== 0) return '只能移除难度 0 的鱼牌';
+        return invalidOpp(validateDefense(state, playerIndex, tp, target.cardId));
+      }
+      return '需要指定一张难度 0 的鱼牌（浅滩或对方已钓区）';
     }
 
     case ABILITY_TYPES.PASS_LEFT:
@@ -416,7 +427,14 @@ export function applyUnboundedAbility(state, playerIndex, abilityKey, target, ct
       break;
     }
     case ABILITY_TYPES.REMOVE_ZERO:
-      state.shoals[target.shoalIndex].splice(target.cardIndex, 1);
+      if (typeof target.playerIndex === 'number' && typeof target.cardId === 'string') {
+        const opp = state.players[target.playerIndex];
+        const ri = opp.caught.indexOf(target.cardId);
+        if (ri === -1) throw new Error('remove_zero：找不到对方已钓的鱼');
+        opp.caught.splice(ri, 1);
+      } else {
+        state.shoals[target.shoalIndex].splice(target.cardIndex, 1);
+      }
       events.push('remove_zero');
       break;
     case ABILITY_TYPES.PASS_LEFT: {

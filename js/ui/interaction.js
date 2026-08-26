@@ -14,7 +14,7 @@
  */
 import { CARD_BY_ID } from '../core/cards.js';
 import { PHASE } from '../core/stateMachine.js';
-import { getDrawableShoals, getRequiredDrawCount, getCatchableDrawn, getLegalThrowTargets } from '../core/rules.js';
+import { getDrawableShoals, getRequiredDrawCount, getCatchableDrawn, getLegalThrowTargets, getCatchLimit } from '../core/rules.js';
 
 /** 当前能力的目标瞄准模式；无目标主动能力返回 null */
 export function abilityAim(state, ui) {
@@ -30,7 +30,7 @@ export function abilityAim(state, ui) {
     case 'swap_zero':
       return { mode: ui.swapStep === 'own' ? 'swapOwn' : 'swapOpp' };
     case 'rearrange_shoal': return { mode: 'shoal' };
-    case 'remove_zero': return { mode: 'shoalZero' };
+    case 'remove_zero': return { mode: 'removeZero' };
     case 'peek_multi': return { mode: 'shoalPeek' };
     default: return null; // 无目标：draw_plus/power/reveal/shuffle/snow/pass_left
   }
@@ -41,7 +41,8 @@ export function aimShoalTargets(state, aim) {
   if (!aim) return [];
   switch (aim.mode) {
     case 'shoal': return state.shoals.map((s, i) => (s.length > 0 ? i : -1)).filter((i) => i !== -1);
-    case 'shoalZero': return state.shoals.map((s, i) => (s.length > 0 && CARD_BY_ID[s[0]].strength === 0 ? i : -1)).filter((i) => i !== -1);
+    case 'shoalZero':
+    case 'removeZero': return state.shoals.map((s, i) => (s.length > 0 && CARD_BY_ID[s[0]].strength === 0 ? i : -1)).filter((i) => i !== -1);
     case 'shoalPeek': return state.shoals.map((s, i) => (s.length > 0 ? i : -1)).filter((i) => i !== -1);
     default: return [];
   }
@@ -77,18 +78,20 @@ export function getDrawInteraction(state, ui) {
 
 /**
  * 钓走/放回阶段交互。
- * @returns {{catchable:string[], mustCatchFirst:boolean, hint:string}}
+ * @returns {{catchable:string[], mustCatchFirst:boolean, limit:number, hint:string}}
  */
 export function getCatchInteraction(state) {
   const catchable = getCatchableDrawn(state);
-  const mustCatchFirst = !state.caughtThisTurn && catchable.length > 0;
+  const limit = getCatchLimit(state);
+  const mustCatchFirst = state.caughtThisTurn === 0 && catchable.length > 0;
   return {
     catchable,
     mustCatchFirst,
+    limit,
     hint: mustCatchFirst
       ? '有可钓走的鱼，请先钓走一条'
-      : state.caughtThisTurn
-        ? '已钓走一条，其余放回'
+      : state.caughtThisTurn > 0
+        ? `已钓走 ${state.caughtThisTurn}/${limit} 条，其余放回`
         : '无牌可钓，请全部放回',
   };
 }
@@ -154,11 +157,17 @@ export function buildBoardUi(state, ui, { canInteract, statusText }) {
           // oppFish 对目标卡本身有类型校验；这里仅提供可点性，非法目标由派发校验拒绝
           return !o.exhausted.includes(cardId) || aim.mode === 'player';
         }
+        // removeZero：对方已钓的难度 0 鱼可点（移除游戏）
+        if (aim.mode === 'removeZero') {
+          return state.players[i].caught.some((cid) => CARD_BY_ID[cid].strength === 0);
+        }
         return false;
       }
       // 非瞄准：自己可发动的能力鱼（详情入口由 onFishClick 打开）
       return i === me && !!CARD_BY_ID[cardId].ability && !state.players[i].exhausted.includes(cardId);
     },
+    drawnHint: catchInter ? catchInter.hint : '',
+    mustCatchFirst: catchInter ? catchInter.mustCatchFirst : false,
     statusText,
   };
 }

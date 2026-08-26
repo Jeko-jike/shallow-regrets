@@ -47,7 +47,7 @@ export function createInitialState({ seed, playerNames }) {
     drawn: [],
     drawnFrom: [],
     extraDraw: 0,
-    caughtThisTurn: false,
+    caughtThisTurn: 0,  // 本回合已钓走条数（上限 = 1 + extraDraw，见 rules.getCatchLimit）
     lastPeek: null,     // 最近偷看结果 {player, shoalIndexes, cardIds}
     revealedTops: null, // 凯尔派：{shoalIndexes} 揭示的堆顶，回合结束清空
     stagnation: 0,      // 连续无人钓获的回合数（见 rules.checkGameOver 的停滞保护终局）

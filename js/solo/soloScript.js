@@ -12,6 +12,7 @@ import {
   getDrawableShoals,
   getLegalThrowTargets,
   getRequiredDrawCount,
+  getCatchLimit,
 } from '../core/rules.js';
 
 /** 脚本对手名称 */
@@ -77,10 +78,10 @@ function chooseDraw(state) {
   return { type: 'DRAW', from };
 }
 
-/** 钓走/放回：优先钓目标清单内的可钓牌，否则钓分值最高且非污秽；否则放回（先污秽，最左合法浅滩） */
+/** 钓走/放回：优先钓目标清单内的可钓牌（可多钓至本回合上限），否则钓分值最高且非污秽；否则放回（先污秽，最左合法浅滩） */
 function chooseCatch(state) {
   const catchable = getCatchableDrawn(state);
-  if (catchable.length > 0 && !state.caughtThisTurn) {
+  if (catchable.length > 0 && state.caughtThisTurn < getCatchLimit(state)) {
     const targetCatch = catchable
       .filter((id) => isTarget(id))
       .sort((a, b) => targetPriority(a) - targetPriority(b))[0];

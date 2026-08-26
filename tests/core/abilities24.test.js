@@ -260,6 +260,24 @@ describe('梭子鱼 / 眼球团 / 凯尔派 / 美人鱼 / 海主教', () => {
       shoals: [ ['oarfish', 'lamprey'], [],[],[],[],[] ] });
     expect(validateAction(s, { type: ACTION.USE_ABILITY, cardId: 'barracuda', target: { shoalIndex: 0, cardIndex: 0 } })).toBeTruthy();
   });
+  it('梭子鱼可移除对方已钓的难度0鱼', () => {
+    let s = makeState({ current: 0, players: [ { c: ['barracuda'] }, { c: ['lamprey', 'oarfish'] } ] });
+    s = act(s, { type: ACTION.USE_ABILITY, cardId: 'barracuda', target: { playerIndex: 1, cardId: 'lamprey' } });
+    expect(s.players[1].caught).not.toContain('lamprey');
+    expect(s.players[1].caught).toContain('oarfish');
+  });
+  it('梭子鱼不能移除对方已钓的难度1鱼', () => {
+    const s = makeState({ current: 0, players: [ { c: ['barracuda'] }, { c: ['oarfish'] } ] });
+    expect(validateAction(s, { type: ACTION.USE_ABILITY, cardId: 'barracuda', target: { playerIndex: 1, cardId: 'oarfish' } })).toBeTruthy();
+  });
+  it('梭子鱼不能移除自己的鱼', () => {
+    const s = makeState({ current: 0, players: [ { c: ['barracuda', 'lamprey'] }, { c: [] } ] });
+    expect(validateAction(s, { type: ACTION.USE_ABILITY, cardId: 'barracuda', target: { playerIndex: 0, cardId: 'lamprey' } })).toBeTruthy();
+  });
+  it('梭子鱼不能移除雪鳗护体玩家的鱼', () => {
+    const s = makeState({ current: 0, players: [ { c: ['barracuda'] }, { c: ['lamprey'], snow: true } ] });
+    expect(validateAction(s, { type: ACTION.USE_ABILITY, cardId: 'barracuda', target: { playerIndex: 1, cardId: 'lamprey' } })).toBeTruthy();
+  });
   it('眼球团：查看并重排一个鱼群', () => {
     let s = makeState({ current: 0, players: [ { c: ['eyeballBlob'] }, { c: [] } ],
       shoals: [ ['lamprey', 'oarfish', 'kraken'], [],[],[],[],[] ] });

@@ -15,6 +15,7 @@ import {
   getDrawableShoals,
   getLegalThrowTargets,
   getRequiredDrawCount,
+  getCatchLimit,
   checkGameOver,
 } from './rules.js';
 import {
@@ -99,7 +100,9 @@ export function validateAction(state, action) {
 
     case ACTION.CATCH: {
       if (state.phase !== PHASE.CATCH) return '当前不在钓走阶段';
-      if (state.caughtThisTurn) return '本回合只能钓走一条鱼';
+      if (state.caughtThisTurn >= getCatchLimit(state)) {
+        return `本回合最多钓走 ${getCatchLimit(state)} 条鱼`;
+      }
       if (!state.drawn.includes(action.cardId)) return '这张牌不在本回合抽出的牌中';
       if (!canCatch(state, playerIndex, action.cardId)) {
         return `无法钓走：需要难度 ${CARD_BY_ID[action.cardId].strength}，当前力量 ${getPower(state, playerIndex)}`;
@@ -110,7 +113,7 @@ export function validateAction(state, action) {
     case ACTION.THROW_BACK: {
       if (state.phase !== PHASE.CATCH) return '当前不在放生阶段';
       if (!state.drawn.includes(action.cardId)) return '这张牌不在本回合抽出的牌中';
-      if (!state.caughtThisTurn && getCatchableDrawn(state).length > 0) {
+      if (state.caughtThisTurn === 0 && getCatchableDrawn(state).length > 0) {
         return '有可钓走的鱼，必须先钓走一条';
       }
       const legal = getLegalThrowTargets(state);
@@ -126,7 +129,7 @@ export function validateAction(state, action) {
 /** 回合结束：终局判定或轮到下一位玩家 */
 function endTurn(state, events) {
   // 停滞保护：本回合是否钓到鱼（整轮无人钓获 → checkGameOver 兜底终局）
-  state.stagnation = state.caughtThisTurn ? 0 : state.stagnation + 1;
+  state.stagnation = state.caughtThisTurn > 0 ? 0 : state.stagnation + 1;
   if (checkGameOver(state)) {
     state.phase = PHASE.GAME_OVER;
     state.gameOver = true;
@@ -149,7 +152,7 @@ function endTurn(state, events) {
   state.drawn = [];
   state.drawnFrom = [];
   state.extraDraw = 0;
-  state.caughtThisTurn = false;
+  state.caughtThisTurn = 0;
   state.lastPeek = null;
   events.push('turn_end');
 }
@@ -211,7 +214,7 @@ export function applyAction(state, action) {
       s.drawn.splice(idx, 1);
       s.drawnFrom.splice(idx, 1);
       me.caught.push(action.cardId);
-      s.caughtThisTurn = true;
+      s.caughtThisTurn += 1;
       events.push('catch');
       if (s.drawn.length === 0) endTurn(s, events);
       break;

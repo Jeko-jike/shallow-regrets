@@ -92,6 +92,11 @@ export function getRequiredDrawCount(state) {
   return Math.min(BASE_DRAW + state.extraDraw, getDrawableShoals(state).length);
 }
 
+/** 本回合可钓走上限 = 基础 1 + 额外抽卡数（皇带鱼+2 / 七鳃鳗+1 提升可保留数） */
+export function getCatchLimit(state) {
+  return 1 + state.extraDraw;
+}
+
 /**
  * 终局判定：所有鱼牌被钓光或被移出游戏（浅滩全空），或没有任何玩家能钓起可接触的鱼。
  */

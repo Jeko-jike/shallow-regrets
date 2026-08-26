@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { applyAction, ACTION, PHASE } from '../../js/core/stateMachine.js';
 import { createInitialState } from '../../js/core/gameState.js';
-import { canCatch, getLegalThrowTargets, getRequiredDrawCount } from '../../js/core/rules.js';
+import { canCatch, getLegalThrowTargets, getRequiredDrawCount, getCatchLimit } from '../../js/core/rules.js';
 import { makeState, makePlayer } from '../helpers.js';
 
 describe('stateMachine.js 状态机', () => {
@@ -38,7 +38,7 @@ describe('stateMachine.js 状态机', () => {
     expect(again.error).toContain('已横置');
   });
 
-  it('CATCH：只能钓可钓的牌，且每回合只能钓一条', () => {
+  it('CATCH：只能钓可钓的牌，且每回合最多钓一条（默认上限 1）', () => {
     const state = makeState({
       players: [makePlayer(0, 'A', ['lamprey']), makePlayer(1, 'B')], // 1 钩
     });
@@ -49,7 +49,33 @@ describe('stateMachine.js 状态机', () => {
     const ok = applyAction(state, { type: ACTION.CATCH, cardId: 'lamprey' });
     expect(ok.error).toBeUndefined();
     expect(ok.state.players[0].caught).toContain('lamprey');
-    expect(ok.state.caughtThisTurn).toBe(true);
+    expect(ok.state.caughtThisTurn).toBe(1);
+    // 默认上限 1：再钓第二条被拒
+    const over = applyAction(ok.state, { type: ACTION.CATCH, cardId: 'kraken' });
+    expect(over.error).toContain('最多钓走');
+  });
+
+  it('CATCH：皇带鱼额外抽2后本回合可钓 3 条（看4摸3）', () => {
+    const state = makeState({
+      players: [makePlayer(0, 'A', ['lamprey', 'oarfish']), makePlayer(1, 'B')], // 1+1=2 钩
+    });
+    state.phase = PHASE.ABILITY;
+    const used = applyAction(state, { type: ACTION.USE_ABILITY, cardId: 'oarfish' }).state; // extraDraw=2
+    expect(used.extraDraw).toBe(2);
+    expect(getCatchLimit(used)).toBe(3);
+    used.phase = PHASE.CATCH;
+    used.drawn = ['lamprey', 'lamprey', 'lamprey', 'lamprey'];
+    // 连续钓 3 条成功
+    let s = used;
+    for (let k = 0; k < 3; k++) {
+      const r = applyAction(s, { type: ACTION.CATCH, cardId: 'lamprey' });
+      expect(r.error).toBeUndefined();
+      s = r.state;
+    }
+    expect(s.caughtThisTurn).toBe(3);
+    // 第 4 条被拒
+    const over = applyAction(s, { type: ACTION.CATCH, cardId: 'lamprey' });
+    expect(over.error).toContain('最多钓走');
   });
 
   it('THROW_BACK：有可钓牌时必须先钓走；放回目标必须合法', () => {
@@ -87,7 +113,7 @@ describe('stateMachine.js 状态机', () => {
         action = { type: ACTION.DRAW, from: drawable.slice(0, required) };
       } else if (s.phase === PHASE.CATCH) {
         const catchable = s.drawn.filter((id) => canCatch(s, s.currentPlayer, id));
-        if (catchable.length > 0 && !s.caughtThisTurn) {
+        if (catchable.length > 0 && s.caughtThisTurn < getCatchLimit(s)) {
           action = { type: ACTION.CATCH, cardId: catchable[0] };
         } else if (s.drawn.length > 0) {
           const legal = getLegalThrowTargets(s);

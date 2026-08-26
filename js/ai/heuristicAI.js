@@ -15,6 +15,7 @@ import {
   getDrawableShoals,
   getLegalThrowTargets,
   getRequiredDrawCount,
+  getCatchLimit,
 } from '../core/rules.js';
 
 /** 能力对 AI 的额外价值（"抢关键能力鱼"的量化） */
@@ -166,10 +167,12 @@ function buildAbilityAction(state, cardId) {
     }
 
     case 'give_card': {
-      // 断脚是负分污秽，尽早丢给下一位玩家
-      const oi = opps[0];
-      if (oi == null) return null;
-      return { type: 'USE_ABILITY', cardId, target: { playerIndex: oi } };
+      // 断脚是负分污秽，尽早丢给下一位玩家（避开雪鳗护体，否则动作被拒导致死循环）
+      for (const oi of opps) {
+        if (isFrozen(state, oi)) continue;
+        return { type: 'USE_ABILITY', cardId, target: { playerIndex: oi } };
+      }
+      return null;
     }
 
     case 'peek_multi': {
@@ -179,6 +182,16 @@ function buildAbilityAction(state, cardId) {
     }
 
     case 'remove_zero': {
+      // 优先移除对方已钓的难度 0 鱼（削弱对手），否则移除浅滩顶牌的难度 0 鱼
+      for (const oi of opps) {
+        if (isFrozen(state, oi)) continue;
+        const o = state.players[oi];
+        const zero = o.caught.filter((id) => CARD_BY_ID[id].strength === 0);
+        if (zero.length === 0) continue;
+        const target = zero
+          .sort((a, b) => aiCardValue(CARD_BY_ID[b], state, p) - aiCardValue(CARD_BY_ID[a], state, p))[0];
+        return { type: 'USE_ABILITY', cardId, target: { playerIndex: oi, cardId: target } };
+      }
       for (let i = 0; i < state.shoals.length; i++) {
         if (state.shoals[i].length > 0 && CARD_BY_ID[state.shoals[i][0]].strength === 0) {
           return { type: 'USE_ABILITY', cardId, target: { shoalIndex: i, cardIndex: 0 } };
@@ -250,10 +263,10 @@ function chooseDrawAction(state) {
   return { type: 'DRAW', from };
 }
 
-/** 钓走/放生阶段：钓价值最高的可钓牌，其余放回合法浅滩（避免放回来源浅滩，防止埋住可钓牌） */
+/** 钓走/放生阶段：钓价值最高的可钓牌（可多钓至本回合上限），其余放回合法浅滩（避免放回来源浅滩，防止埋住可钓牌） */
 function chooseCatchAction(state) {
   const catchable = getCatchableDrawn(state);
-  if (catchable.length > 0 && !state.caughtThisTurn) {
+  if (catchable.length > 0 && state.caughtThisTurn < getCatchLimit(state)) {
     const best = catchable
       .map((id) => ({ id, v: aiCardValue(CARD_BY_ID[id], state, state.currentPlayer) }))
       .sort((a, b) => b.v - a.v)[0];

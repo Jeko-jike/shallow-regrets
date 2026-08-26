@@ -81,7 +81,7 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
         modal.showToast('该浅滩为空，无法选择', 'error');
         return;
       }
-      if (aim.mode === 'shoalZero' && CARD_BY_ID[s.shoals[i][0]].strength !== 0) {
+      if (aim.mode === 'removeZero' && CARD_BY_ID[s.shoals[i][0]].strength !== 0) {
         modal.showToast('只能移除一张难度 0 的鱼牌', 'error');
         return;
       }
@@ -132,6 +132,10 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
         return;
       }
       if (aim && playerIndex !== me) {
+        if (aim.mode === 'removeZero' && CARD_BY_ID[cardId].strength !== 0) {
+          modal.showToast('只能移除难度 0 的鱼牌', 'error');
+          return;
+        }
         const target = (() => {
           if (aim.mode === 'swapOpp') return { playerIndex, ownCardId: ui.swapOwn, oppCardId: cardId };
           if (aim.mode === 'player') return { playerIndex };
@@ -147,14 +151,8 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
       return;
     }
 
-    // 自己待发动的能力鱼：打开详情（可从详情发动或查看）
-    if (playerIndex === me && s.phase === PHASE.ABILITY && !ui.abilityCardId) {
-      const card = CARD_BY_ID[cardId];
-      if (card.ability && !s.players[me].exhausted.includes(cardId)) {
-        activateAbility(cardId);
-        return;
-      }
-    }
+    // 所有已钓的鱼（含可发动能力的能力鱼）点击都打开详情弹窗；
+    // 详情内提供「发动能力」按钮，避免点击能力鱼时直接跳过详情。
     showCardDetail(playerIndex, cardId);
   }
 
@@ -184,6 +182,8 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
       modal.showToast('请点击 1-3 个浅滩查看其顶牌', 'info');
     } else if (ability === 'give_card') {
       modal.showToast('请点击对方的一位玩家', 'info');
+    } else if (ability === 'remove_zero') {
+      modal.showToast('点击浅滩的难度0顶牌，或对方已钓的难度0鱼', 'info');
     } else {
       modal.showToast('请点击对方的一条鱼', 'info');
     }
@@ -340,7 +340,7 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
 
   function onThrowClick(cardId) {
     const s = getState();
-    if (!s.caughtThisTurn && getCatchableDrawn(s).length > 0) {
+    if (s.caughtThisTurn === 0 && getCatchableDrawn(s).length > 0) {
       modal.showToast('有可钓走的鱼，请先钓走一条', 'error');
       return;
     }

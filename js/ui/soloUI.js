@@ -8,7 +8,7 @@ import { chooseScriptAction, SCRIPT_NAME, TARGETS } from '../solo/soloScript.js'
 import { CARD_BY_ID } from '../core/cards.js';
 import { ABILITIES } from '../core/abilities.js';
 import { PHASE } from '../core/stateMachine.js';
-import { canCatch } from '../core/rules.js';
+import { canCatch, getCatchLimit } from '../core/rules.js';
 import { getDrawInteraction, getCatchInteraction, buildBoardUi, abilityAim } from './interaction.js';
 import { createBoardInteraction } from './boardInteraction.js';
 import { getArtUrl } from '../data/artPrompts.js';
@@ -119,7 +119,7 @@ function getStatusText() {
       if (ui.abilityCardId) {
         const aim = abilityAim(s, ui);
         if (aim?.mode === 'shoalPeek') return (ui.aimShoals?.length ?? 0) ? `已选 ${ui.aimShoals.length}/3 个，点击"确认查看"` : '点击 1-3 个浅滩查看其顶牌';
-        if (aim?.mode === 'shoalZero') return '点击一张难度 0 的鱼牌所在浅滩';
+        if (aim?.mode === 'removeZero') return '点击浅滩的难度0顶牌，或对方已钓的难度0鱼';
         if (aim?.mode === 'shoal') return '点击要重排的鱼群';
         if (aim?.mode === 'swapOwn') return '点击你要交换出去的一条鱼';
         if (aim?.mode === 'swapOpp') return '点击对方的一条鱼进行交换';
@@ -146,7 +146,7 @@ function renderAll() {
   render.renderPlayersBar($('playersBar'), s);
   render.renderShoals($('shoalsRow'), s, ui, { onShoalClick: interaction.onShoalClick });
   render.renderDrawn($('drawnArea'), s, ui, {
-    canCatch: (cardId) => canCatch(s, s.currentPlayer, cardId) && !s.caughtThisTurn,
+    canCatch: (cardId) => canCatch(s, s.currentPlayer, cardId) && s.caughtThisTurn < getCatchLimit(s),
     onCatch: interaction.onCatch,
     onThrowClick: interaction.onThrowClick,
     onPassAbilities: interaction.onPassAbilities,

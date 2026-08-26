@@ -34,14 +34,37 @@ for %%P in (3000 3001 3002 3003 3004 3005) do (
 echo.
 echo [2/3] Starting online server on port %PORT% ...
 start "Shallow Regrets Server" cmd /k "set PORT=%PORT%&&npm run serve"
-timeout /t 2 /nobreak >nul
+
+rem Wait for the server to actually listen, so we never open a tunnel to a dead port.
+set /a TRY=0
+:WAITSERVER
+timeout /t 1 /nobreak >nul
+netstat -ano | findstr /r /c:":%PORT% .*LISTENING" >nul 2>nul
+if not errorlevel 1 goto SERVERUP
+set /a TRY+=1
+if %TRY% geq 15 goto SERVERFAIL
+goto WAITSERVER
+:SERVERUP
+echo Server is up on port %PORT%.
+goto OPENPAGE
+:SERVERFAIL
+echo.
+echo [ERROR] Server did NOT start listening on port %PORT%.
+echo Open the "Shallow Regrets Server" console window to see the error,
+echo fix the problem, then rerun this launcher. Tunnel was NOT opened.
+echo.
+pause
+exit /b 1
+:OPENPAGE
 
 echo [3/3] Opening page ...
 start "" "http://localhost:%PORT%"
 
-rem Detect cloudflared: from PATH first, then the tools\ folder.
+rem Detect cloudflared: from PATH first, then the project ROOT folder, then the tools\ folder.
 set CF=
 where cloudflared >nul 2>nul && set "CF=cloudflared"
+if not defined CF if exist "%~dp0cloudflared-windows-amd64.exe" set "CF=%~dp0cloudflared-windows-amd64.exe"
+if not defined CF if exist "%~dp0cloudflared.exe" set "CF=%~dp0cloudflared.exe"
 if not defined CF if exist "%~dp0tools\cloudflared-windows-amd64.exe" set "CF=%~dp0tools\cloudflared-windows-amd64.exe"
 if not defined CF if exist "%~dp0tools\cloudflared.exe" set "CF=%~dp0tools\cloudflared.exe"
 

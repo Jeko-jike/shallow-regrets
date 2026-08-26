@@ -9,10 +9,12 @@
    - 官方下载：<https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/>
    - 或 GitHub Releases：<https://github.com/cloudflare/cloudflared/releases>
 2. 下载 `cloudflared-windows-amd64.exe`。
-3. 放置方式二选一：
-   - **方式 A（推荐）**：把 `cloudflared-windows-amd64.exe` 重命名为 `cloudflared.exe`，
-     放入项目根目录或任意目录，命令行中直接使用完整路径。
-   - **方式 B**：把 `cloudflared.exe` 所在目录加入系统 PATH，之后可直接输入 `cloudflared` 命令。
+3. 放置方式三选一：
+   - **方式 A（推荐）**：把 `cloudflared-windows-amd64.exe` 原样（无需改名）放到**项目根目录**，
+     `一键启动联网游戏.bat` 会自动检测并开启公网隧道。
+   - **方式 B**：把 `cloudflared-windows-amd64.exe`（或改名的 `cloudflared.exe`）放入
+     `tools\` 文件夹，联网 bat 同样会自动检测。
+   - **方式 C**：把 `cloudflared.exe` 所在目录加入系统 PATH，之后可直接输入 `cloudflared` 命令。
 
 > 注意：`.gitignore` 已忽略 `cloudflared/` 目录与 `*.pem` / `*.jsonl` 凭据文件，
 > 禁止把隧道凭据提交到仓库。

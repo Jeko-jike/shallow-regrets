@@ -191,6 +191,28 @@ export function renderShoals(el, state, ui, handlers) {
         }
         stack.appendChild(back);
       }
+      // 凯尔派揭示：将顶牌翻面公示（覆盖在顶牌上方，不插进卡背序列以免破坏 nth-child 层序）
+      if (state.revealedTops && Array.isArray(state.revealedTops.shoalIndexes) &&
+          state.revealedTops.shoalIndexes.includes(i)) {
+        const reveal = document.createElement('div');
+        reveal.className = 'shoal-reveal';
+        // 与该位置顶牌卡背同框对齐：顶牌偏移 (show-1)*5px 纵向 / (show-1)*4px 横向
+        reveal.style.top = `${(show - 1) * 5}px`;
+        reveal.style.left = `${(show - 1) * 4}px`;
+        const front = buildCardFront(CARD_BY_ID[shoal[0]], { data: { shoal: i, cardIndex: 0 } });
+        front.classList.add('revealed');
+        if (clickable) front.classList.add('selectable');
+        if (ui.shoalSelected?.(i)) front.classList.add('selected');
+        if (clickable && handlers.onShoalClick) {
+          front.addEventListener('click', () => handlers.onShoalClick(i));
+        }
+        reveal.appendChild(front);
+        const badge = document.createElement('div');
+        badge.className = 'shoal-reveal-badge';
+        badge.textContent = '公示';
+        reveal.appendChild(badge);
+        stack.appendChild(reveal);
+      }
     }
     wrap.appendChild(stack);
 

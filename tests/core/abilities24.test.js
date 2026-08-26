@@ -8,7 +8,7 @@ import { canCatch, hasLowerAlternative, getRequiredDrawCount, checkGameOver, get
 import { ABILITY_TYPES } from '../../js/core/abilities.js';
 
 /** 手工构建对局（默认 2 人，A=0，B=1），用于隔离场景 */
-function makeState({ players = [{ c: [], e: [] }, { c: [], e: [] }], current = 0, shoals = [[], [], [], [], [], []], names = ['A', 'B'] } = {}) {
+function makeState({ players = [{ c: [], e: [] }, { c: [], e: [] }], current = 0, shoals = [[], [], [], [], [], []], drawn = [], names = ['A', 'B'] } = {}) {
   const s = createInitialState({ seed: 1, playerNames: names });
   s.currentPlayer = current;
   s.phase = PHASE.ABILITY;
@@ -21,6 +21,7 @@ function makeState({ players = [{ c: [], e: [] }, { c: [], e: [] }], current = 0
   if (s.players[0].snowGuard) s.snowGuardOwner = 0;
   if (s.players[1].snowGuard) s.snowGuardOwner = 1;
   s.shoals = shoals;
+  s.drawn = drawn;
   return s;
 }
 function act(s, a) {
@@ -143,22 +144,49 @@ describe('海猴/旧日支配者 捕鱼限制', () => {
   });
 
   it('旧日支配者：有难度<3可选则不可捕难度≥3', () => {
-    // 力量=sealMan(1)+rotfish(2)+barracuda? 用 rotfish(2)+severedFoot(2)=4
+    // 力量=sealMan(1)+rotfish(2)+severedFoot(2)=4；本回合抽到 oarfish(难度1) 作为"其他可选"
     const s = makeState({
       players: [ { c: ['elderThing', 'rotfish', 'severedFoot'] }, { c: [] } ],
-      shoals: [ ['oarfish'], [],[],[],[],[] ], // oarfish 难度1，是"其他可选"
+      drawn: ['oarfish'],
     });
     expect(getPower(s, 0)).toBe(4);
     expect(hasLowerAlternative(s, 0, 'swordfish')).toBe(true);
     expect(canCatch(s, 0, 'swordfish')).toBe(false); // swordfish 难度3，有难度1可选
   });
   it('旧日支配者：无难度<3可选时可捕难度≥3', () => {
+    // 本回合抽到的全是难度≥3（greatWhite 难度3），无更低可选项
     const s = makeState({
       players: [ { c: ['elderThing', 'rotfish', 'severedFoot'] }, { c: [] } ],
-      shoals: [ ['greatWhite'], [],[],[],[],[] ], // greatWhite 难度3（被限制的同类）
+      drawn: ['greatWhite'],
     });
     expect(hasLowerAlternative(s, 0, 'swordfish')).toBe(false);
     expect(canCatch(s, 0, 'swordfish')).toBe(true);
+  });
+  it('旧日支配者示例：抽到 1 与 2 难度，二者都可捕', () => {
+    const s = makeState({
+      players: [ { c: ['elderThing', 'rotfish', 'severedFoot'] }, { c: [] } ],
+      drawn: ['oarfish', 'sealMan'], // 难度 1、2
+    });
+    expect(canCatch(s, 0, 'oarfish')).toBe(true);
+    expect(canCatch(s, 0, 'sealMan')).toBe(true);
+  });
+  it('旧日支配者示例：抽到 1 与 4 难度，只能捕捉 1 难度', () => {
+    const s = makeState({
+      players: [ { c: ['elderThing', 'rotfish', 'severedFoot'] }, { c: [] } ],
+      drawn: ['oarfish', 'kelpie'], // 难度 1、4
+    });
+    expect(canCatch(s, 0, 'oarfish')).toBe(true);
+    expect(canCatch(s, 0, 'kelpie')).toBe(false);
+  });
+  it('旧日支配者示例：抽到 5 与 4 难度，二者都可捕', () => {
+    // 力量需 ≥5：rotfish(2)+severedFoot(2)+seaMonkey(3)=7
+    const s = makeState({
+      players: [ { c: ['elderThing', 'rotfish', 'severedFoot', 'seaMonkey'] }, { c: [] } ],
+      drawn: ['kraken', 'kelpie'], // 难度 5、4
+    });
+    expect(getPower(s, 0)).toBe(7);
+    expect(canCatch(s, 0, 'kelpie')).toBe(true);
+    expect(canCatch(s, 0, 'kraken')).toBe(true);
   });
 });
 
@@ -243,6 +271,16 @@ describe('断脚（送出）/ 腐鱼（传球）', () => {
     expect(s.players[1].caught).toContain('lamprey'); // A 的 lamprey 到 B
     expect(s.players[0].caught).toContain('severedFoot'); // B 的 severedFoot 到 A
     expect(s.players[0].caught).not.toContain('lamprey');
+  });
+  it('腐鱼传自身：接收方这张牌横置，不能重复发动', () => {
+    let s = makeState({ current: 0, players: [ { c: ['rotfish', 'lamprey'] }, { c: ['oarfish'] } ] });
+    s = act(s, { type: ACTION.USE_ABILITY, cardId: 'rotfish' });
+    s = act(s, { type: ACTION.RESOLVE, resolution: { pick: 'rotfish' } }); // A 传腐鱼自身
+    s = act(s, { type: ACTION.RESOLVE, resolution: { pick: 'oarfish' } }); // B 传 oarfish
+    expect(s.players[1].caught).toContain('rotfish');       // 腐鱼到 B
+    expect(s.players[1].exhausted).toContain('rotfish');    // 且横置态随卡转移
+    expect(s.players[0].caught).not.toContain('rotfish');
+    expect(s.players[0].exhausted).not.toContain('rotfish'); // 不再滞留在原主横置列表
   });
 });
 

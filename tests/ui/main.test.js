@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import * as render from '../../js/ui/render.js';
+import { createInitialState } from '../../js/core/gameState.js';
 import { CARDS, CARD_BY_ID } from '../../js/core/cards.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +39,34 @@ describe('M1 本地热座', () => {
     expect($$('.mode-card').length).toBe(5);
     expect($('#btnRules')).toBeTruthy();
     expect($('#btnSettings')).toBeTruthy();
+  });
+
+  it('设置弹窗提供亮度/伽马滑块', () => {
+    click($('#btnSettings'));
+    expect($('#modalOverlay').classList.contains('active')).toBe(true);
+    const slider = $('#setBright');
+    expect(slider).toBeTruthy();
+    expect(slider.type).toBe('range');
+    expect($('#brightVal').textContent).toMatch(/%$/);
+    click($('#modalClose'));
+  });
+
+  it('凯尔派揭示：命中的浅滩顶牌翻面公示，未命中的仍是卡背', () => {
+    const state = createInitialState({ seed: 1, playerNames: ['A', 'B'] });
+    state.shoals = [['kraken'], ['lamprey', 'oarfish'], [], [], [], []];
+    state.revealedTops = { shoalIndexes: [0] };
+    const el = document.createElement('div');
+    const ui = { shoalClickable: () => false, shoalSelected: () => false };
+    render.renderShoals(el, state, ui, {});
+    const shoals = Array.from(el.querySelectorAll('.shoal'));
+    expect(shoals.length).toBe(6);
+    // 浅滩1（index 0）有翻面公示卡
+    expect(shoals[0].querySelector('.shoal-reveal .card-front')).toBeTruthy();
+    expect(shoals[0].querySelector('.shoal-reveal .card-front').textContent).toContain('挪威海怪');
+    expect(shoals[0].querySelector('.shoal-reveal-badge').textContent).toBe('公示');
+    // 浅滩2（index 1）未揭示：无翻面卡，只有卡背
+    expect(shoals[1].querySelector('.shoal-reveal')).toBeNull();
+    expect(shoals[1].querySelectorAll('.card-back').length).toBe(2);
   });
 
   it('完整对局流程：设置 → 开局 → 抽牌 → 钓走/放回 → 回合切换', () => {

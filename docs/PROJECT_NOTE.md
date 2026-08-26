@@ -144,6 +144,14 @@ shallow-regrets/
 
 ## 三、任务日志
 
+### 2026-08-26 · 五连修复：腐鱼传牌横置 / 永续卡卡死 / 旧日支配者捕鱼限制 / 凯尔派揭示渲染 / 亮度调节
+- **腐鱼传自身不横置**：`abilities.js` 的 `PASS_LEFT` 结算如今在鱼卡跨玩家转移时把 `exhausted` 横置态一并"随卡走"（源移除、目标追加）；腐鱼发动后传给自己，接收方手里这张腐鱼仍横置不可复用。新增单测锁定。
+- **永续能力卡点击发动后卡死**：根因是 `boardInteraction.js` 的 `showCardDetail` 未校验能力 `kind`，永续(被动)卡也给出「发动能力」按钮，点进入瞄准态但 `interaction.js` 的 `abilityAim` 对被动能力返回 `null` → 点谁都被吞。修复：①详情弹窗仅对 `kind==='active'` 显示「发动能力」；②`onFishClick` 兜底——`abilityCardId` 已置位但 `aim` 为 `null` 时自动清空瞄准态走详情，杜绝再卡死。
+- **旧日支配者捕鱼限制语义修正**：`rules.js` `hasLowerAlternative` 由"可接触（浅滩顶/次顶）"改为只看**本回合抽到的鱼(`state.drawn`)**。即「有难度<3 可钓才算有其他可选」：抽到 1+2 都可捕；抽到 1+4 只能捕 1；抽到 5+4 都可捕。按用户 3 个示例补单测。
+- **凯尔派揭示渲染**：核心层 `reveal_all` 早已写 `state.revealedTops`，但 `render.js` 从不读取故无反应。现 `renderShoals` 命中 `revealedTops.shoalIndexes` 的浅滩顶牌用 `buildCardFront` 翻面公示（绝对定位覆盖于卡背序列上方、不占 nth-child 层序，带「公示」徽标），CSS 加 `.shoal-reveal` 磷光描边。
+- **亮度/伽马调节**：深色主题太暗，新增游戏入口设置弹窗里的亮度滑块（`main.js` `openSettings` + `applyBrightness`），对 `body` 应用 `filter: brightness()`，范围 0.6–2.2 存 `localStorage`（key `shallow_regrets_brightness`），启动时恢复。
+- 测试：`abilities24.test.js`(+腐鱼自传横置、旧日支配者 3 示例) / `main.test.js`(+亮度滑块、凯尔派揭示渲染)，**171 测试全绿、`npm run build` 通过**。
+
 ### 2026-08-26 · 前端克苏鲁化改造（大胆克苏鲁 · 纯 CSS + 内联 SVG）
 - 视觉方向（作者确认）：**大胆克苏鲁** + **磷光荧光绿**主强调色；**纯 CSS + 内联 SVG 实现**（零外链、可离线双击、无版权风险）。
 - 设计变量（`base.css` `:root`）：深渊黑 `--bg-deep:#01070a`、磷光绿 `--accent:#86f2ac`/`--accent-strong:#34d399`、古卷朽金 `--gold:#e4c678`、腐化毒橙 `--foul:#ff5b3d`；新增 `--parchment/--blood/--rune-dim/--rune-faint` 与字体变量 `--font-display`(Palatino/Book Antiqua/Georgia+宋体)/`--font-rune`(Runic 符文)。

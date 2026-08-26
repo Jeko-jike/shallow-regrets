@@ -554,25 +554,53 @@ function openM2Setup() {
 
 function openSettings() {
   const body = document.createElement('div');
+  const bright = loadBrightness();
   body.innerHTML = `
     <div class="setup-field"><label class="check"><input type="checkbox" id="setAnim" ${game.settings.anim ? 'checked' : ''} /> 启用动画</label></div>
+    <div class="setup-field">
+      <label class="check">亮度 / 伽马
+        <input type="range" id="setBright" min="0.6" max="2.2" step="0.05" value="${bright}" />
+        <span class="bright-val" id="brightVal">${Math.round(bright * 100)}%</span>
+      </label>
+    </div>
   `;
+  const onBright = (val) => {
+    applyBrightness(val);
+    const valEl = body.querySelector('#brightVal');
+    if (valEl) valEl.textContent = `${Math.round(val * 100)}%`;
+  };
+  body.querySelector('#setBright').addEventListener('input', (e) => onBright(parseFloat(e.target.value)));
   modal.showModal({
     title: '设置',
     body,
     actions: [
-      { text: '取消', className: 'btn-ghost' },
+      { text: '取消', className: 'btn-ghost', onClick: () => { applyBrightness(loadBrightness()); } },
       {
         text: '保存',
         className: 'btn-primary',
         onClick: () => {
           game.settings.anim = body.querySelector('#setAnim').checked;
           anim.setAnimEnabled(game.settings.anim);
+          saveBrightness(parseFloat(body.querySelector('#setBright').value));
+          applyBrightness(loadBrightness());
           modal.showToast('设置已保存', 'success');
         },
       },
     ],
   });
+}
+
+/* ===== 亮度 / 伽马调节（深色主题太暗可调亮，localStorage 持久化） ===== */
+const BRIGHTNESS_KEY = 'shallow_regrets_brightness';
+function loadBrightness() {
+  const raw = Number(localStorage.getItem(BRIGHTNESS_KEY));
+  return Number.isFinite(raw) && raw >= 0.6 && raw <= 2.2 ? raw : 1;
+}
+function applyBrightness(v) {
+  document.body.style.filter = v === 1 ? '' : `brightness(${v})`;
+}
+function saveBrightness(v) {
+  localStorage.setItem(BRIGHTNESS_KEY, String(v));
 }
 
 /* ===== 事件绑定 ===== */
@@ -672,4 +700,5 @@ window.addEventListener('unhandledrejection', (e) => {
 });
 
 // 初始化：默认显示首页
+applyBrightness(loadBrightness());
 showScreen('home');

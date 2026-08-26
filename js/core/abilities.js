@@ -364,6 +364,12 @@ export function resolvePending(state, resolution) {
         if (i === -1) return;
         from.caught.splice(i, 1);
         to.caught.push(cardId);
+        // 横置状态随卡转移：腐鱼发动后传自身，接收方这张牌仍横置，不能重复发动
+        const eIdx = from.exhausted.indexOf(cardId);
+        if (eIdx !== -1) {
+          from.exhausted.splice(eIdx, 1);
+          to.exhausted.push(cardId);
+        }
       });
       return { events: [], pending: null };
     }

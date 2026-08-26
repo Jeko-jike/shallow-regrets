@@ -123,32 +123,39 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
 
     if (s.phase === PHASE.ABILITY && ui.abilityCardId) {
       const aim = abilityAim(s, ui);
-      const cardId2 = ui.abilityCardId;
-      if (aim?.mode === 'swapOwn' && playerIndex === me) {
-        ui.swapOwn = cardId;
-        ui.swapStep = 'opp';
-        modal.showToast('请点击对方的一条鱼进行交换', 'info');
+      // 永续能力等无法目标的瞄准态：abilityCardId 已置位但 aim 为 null 时点击必被吞。
+      // 兜底自清并走详情，避免界面卡死无法点其他牌。
+      if (!aim) {
+        clearAbilityAim(ui);
         renderAll();
-        return;
-      }
-      if (aim && playerIndex !== me) {
-        if (aim.mode === 'removeZero' && CARD_BY_ID[cardId].strength !== 0) {
-          modal.showToast('只能移除难度 0 的鱼牌', 'error');
+      } else {
+        const cardId2 = ui.abilityCardId;
+        if (aim.mode === 'swapOwn' && playerIndex === me) {
+          ui.swapOwn = cardId;
+          ui.swapStep = 'opp';
+          modal.showToast('请点击对方的一条鱼进行交换', 'info');
+          renderAll();
           return;
         }
-        const target = (() => {
-          if (aim.mode === 'swapOpp') return { playerIndex, ownCardId: ui.swapOwn, oppCardId: cardId };
-          if (aim.mode === 'player') return { playerIndex };
-          return { playerIndex, cardId };
-        })();
-        ui.abilityCardId = null;
-        ui.aimShoals = [];
-        ui.swapStep = null;
-        ui.swapOwn = null;
-        dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target });
+        if (playerIndex !== me) {
+          if (aim.mode === 'removeZero' && CARD_BY_ID[cardId].strength !== 0) {
+            modal.showToast('只能移除难度 0 的鱼牌', 'error');
+            return;
+          }
+          const target = (() => {
+            if (aim.mode === 'swapOpp') return { playerIndex, ownCardId: ui.swapOwn, oppCardId: cardId };
+            if (aim.mode === 'player') return { playerIndex };
+            return { playerIndex, cardId };
+          })();
+          ui.abilityCardId = null;
+          ui.aimShoals = [];
+          ui.swapStep = null;
+          ui.swapOwn = null;
+          dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target });
+          return;
+        }
         return;
       }
-      return;
     }
 
     // 所有已钓的鱼（含可发动能力的能力鱼）点击都打开详情弹窗；
@@ -197,8 +204,10 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
     if (!card) return;
     const owner = playerIndex != null ? s.players[playerIndex] : null;
     const exhausted = !!(owner && owner.exhausted.includes(cardId));
+    // 仅一次性主动能力可发动；永续能力（passive）为常驻被动，无「发动能力」入口
     const canAct =
-      s.phase === PHASE.ABILITY && owner && playerIndex === s.currentPlayer && !!card.ability && !exhausted;
+      s.phase === PHASE.ABILITY && owner && playerIndex === s.currentPlayer &&
+      ABILITIES[card.ability]?.kind === 'active' && !exhausted;
 
     const body = document.createElement('div');
     body.className = 'card-detail';

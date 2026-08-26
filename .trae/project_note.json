@@ -30,7 +30,7 @@
   "file_structure": {
     "key_files": [
       { "path": "index.html", "purpose": "单页入口：首页五模式 / 联机大厅 / 对局页（含 M4 观战面板与 M5 Solo 面板）/ 结算页", "last_updated": "2026-08-25" },
-      { "path": "js/main.js", "purpose": "前端入口：模式路由、对局控制器、M3 联机会话、点击事件绑定", "last_updated": "2026-08-25" },
+      { "path": "js/main.js", "purpose": "前端入口：模式路由、对局控制器、M3 联机会话、点击事件绑定、入口设置弹窗(含亮度/伽马滑块)", "last_updated": "2026-08-26" },
       { "path": "js/core/cards.js", "purpose": "24 张卡唯一数据源（含 strength 所需钩数 与 hooks 提供钩数）", "last_updated": "2026-08-26" },
       { "path": "js/core/gameState.js", "purpose": "初始状态 / 不可变更新 / getHooks / ensureSmallTops（保证开局易钓顶牌）", "last_updated": "2026-08-26" },
       { "path": "js/core/stateMachine.js", "purpose": "状态机 PHASE/ACTION、validateAction、applyAction", "last_updated": "2026-08-26" },
@@ -58,10 +58,10 @@
     "卡图一律本地方案：public/cards/{id}.jpg + getArtUrl 返回相对路径，与网络解耦"
   ],
   "recent_changes": [
+    { "date": "2026-08-26", "change": "五连修复：①腐鱼PASS_LEFT(abilities.js)转移鱼卡时exhausted横置态随卡走(源移除/目标追加)，腐鱼传自身后接收方仍横置不可复用；②boardInteraction.js详情页仅active能力出『发动能力』+onFishClick对aim=null瞄准态兜底自清，杜绝永续卡点击卡死；③rules.js hasLowerAlternative改只看state.drawn(本回合抽到的鱼)：1+2都可捕/1+4只捕1/5+4都可捕，非浅滩可接触牌；④renderShoals读取state.revealedTops，凯尔派命中的浅滩顶牌翻面公示(绝对定位覆盖不占nth-child层序+『公示』徽标)；⑤入口设置弹窗新增亮度/伽马滑块(filter:brightness作用于body,范围0.6-2.2,localStorage key shallow_regrets_brightness,启动恢复)。171测(新增腐鱼自传/旧日3示例/亮度/揭示4项)全绿+dist重建", "impact": "js/core/abilities.js、js/core/rules.js、js/ui/boardInteraction.js、js/ui/render.js、js/main.js、css/board.css、css/modal.css、tests/core/abilities24.test.js、tests/ui/main.test.js、docs/PROJECT_NOTE.md" },
     { "date": "2026-08-26", "change": "M3联机根因修复+体验增强：①根因=main.js $助手为 document.getElementById(裸id) 但联机大厅代码全写成 $('#xxx') 带#号→恒null使 renderLobby 首行即崩→点进入房间无反应/无等待页无房间码；已将该25处改为裸id，浏览器实测建房出码+已连接+房主在线标；②点进入房间即进等待大厅(连接中/占位码)且6s超时明确报错；③对局玩家栏/大厅新增在线&掉线·AI托管徽标(renderPlayersBar增可选meta第三参)。165测绿build成功", "impact": "js/main.js(根因+等待厅+徽标注入)、js/ui/render.js(renderPlayersBar meta徽标)、css/layout.css、tests/ui/main.test.js(+2徽标测试)" },
     { "date": "2026-08-26", "change": "修复联网 bat 两个导致联机不可用的问题：①检测不到项目根目录的 cloudflared-windows-amd64.exe 不开隧道（原来只查 PATH 和 tools\\ 而 exe 在根目录故漏检，无 trycloudflare URL）；②起 server 后盲目开隧道致 502 Bad Gateway（npm run serve 没起来仍开隧道命中空端口）——改为起 server 后循环探测端口出现 LISTENING（最多15s）成功才开隧道、失败醒目报错停。另删空壳 assets/ 目录、tools/README.md 放置说明改三选一（根目录原样放即可被自动检测），实测 netstat 正则可匹配监听端口不误报。", "impact": "一键启动联网游戏.bat(根目录检测+端口就绪探测)、tools/README.md、删除空 assets/；本地 3000 直连 HTTP 200 验证通过" },
     { "date": "2026-08-28", "change": "部署 v0.7.0 与构建产物追踪清理：main(源码)→gh-pages(产物+cards/)；git rm -r --cached dist 移除索引残留，改 .gitignore 只影响未跟踪文件。", "impact": "main 分支完全忽略 dist/；部署流程 = 源分支 build → worktree 替换 index.html+cards/ → 提交推送 → worktree remove" },
-    { "date": "2026-08-26", "change": "一键启动 bat 修复（两版迭代）：①初版重编码 GBK 仍不稳，终稿改为纯 ASCII 英文——bat 内不出现任何中文，任意代码页都能可靠解析，彻底消除'xxx 不是内部或外部命令/xxx was unexpected'闪退；并修掉联网 bat 里 else 块中未转义 ')' 导致块提前截断的硬 bug（echo 改用 1. 2. 而非 1) 2)）。②npm run build 重建 dist，使此前未提交的 MIN_SMALL_TOPS=4 与卡背难度固定分段真正生效，解决'开局<3个0-1浅滩'与'卡背0-1但翻开不符'（2000 种子诊断 0 例）。补 difficultyRange 单测锁定不变式，137 测试全绿。", "impact": "一键启动本地/联网游戏.bat(纯ASCII+CRLF+无BOM、无中文)；联网 bat 修复 else 块未转义 )；dist 重建(main 忽略不追踪)；可双击游玩修复后版本" },
     { "date": "2026-08-26", "change": "卡背难度区间改为固定三段 0 / 1-2 / 3-5（strength 0 的卡背由'0-1'改为显示'0'，消除歧义区间）；补测锁定'每张卡背分段来自该浅滩位置的真实卡、且必含自身 strength'的一一对应不变式——遍历全部 18 张卡断言各段含自身钩数、新增 renderShoals 单测断言克拉肯(strength5)卡背为 3-5、沙丁鱼(strength0)卡背为 0；开局≥3个strength0浅滩已由 MIN_SMALL_TOPS=4 保证无需改。138 测试全绿，dist 重建确认 0-1 字面量已消失。", "impact": "js/ui/render.js(difficultyRange+提示文案)、js/core/gameState.js(注释)、tests/ui/main.test.js；dist 重建" }
   ],
   "known_issues": [
@@ -86,6 +86,8 @@
     ,"一键启动*.bat 必须为纯 ASCII（仅英文提示、不含任何中文）+ CRLF；bat 内出现中文在任意代码页下都可能致 cmd 解析崩坏（双击无反应/闪退），需要中文提示请放到游戏页或 README。另：echo 出现在 if/for 块内时禁止裸 ')'（用 1. 2. 或 ^)）以免块提前截断",
     "UI 每浅滩只渲染顶部 3 张（开局 6×3=18 可见），底层第 4 张仍在牌堆中随抽牌露出；RULES.md 仍写 18 张旧版，勿据此判断牌数",
     "caughtThisTurn 是计数器（上限 1+extraDraw，见 getCatchLimit），任何布尔判断（!caughtThisTurn）都会失效，须用 ===0 / <getCatchLimit",
+    "旧日支配者『其他可选鱼』仅在 state.drawn（本回合抽到的鱼）中判定，非浅滩可接触牌，rules.js hasLowerAlternative 已按此实现；抽到1+2都可捕/1+4只捕1/5+4都可捕",
+    "传牌能力(PASS_LEFT 腐鱼)在 abilities.js 转移鱼卡时 exhausted 横置态随卡走（源移除/目标追加），接收方能否复用看新主人的横置标记",
     "inline-build.mjs 内联 JS/CSS 时 String.replace 第二参必须用替换函数（() => `...`）而非替换串：压缩 bundle 里的 '$&'/'$''/'$`'/'$$' 会被 replace 当特殊模式解释，导致内联内容被破坏（曾致 dist/index.html 双击白屏）",
     "联网 bat 检测 cloudflared 顺序 = PATH → 项目根目录 → tools\\；若开到隧道却 502 Bad Gateway，是 server.js 未监听（不是 cloudflared 问题）——bat 已内置端口就绪探测（起 server 后轮询 LISTENING 最多15s），成功才开隧道、失败报错停",
     "main.js 的 $ 助手 = document.getElementById(id) 只收裸 id、绝不含 #；写 $('#xxx') 会恒返回 null 并抛 null.textContent。曾在联机大厅全写 # 号致 renderLobby 首行崩、点进入房间无反应。新增 DOM 引用一律用裸 id $('id')"

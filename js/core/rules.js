@@ -26,11 +26,11 @@ function passiveCatchBlock(state, playerIndex, cardId) {
 
 /**
  * 是否存在"其他可选的、难度<3 且能钓"的鱼（供旧日支配者判定）。
- * 可接触 = 已抽出牌 + 每个浅滩顶/次顶。
+ * 「可选」= 本回合抽到的鱼（state.drawn，只有这些牌本回合可被钓走），
+ * 而非浅滩中仅"可接触"的牌——抽到的全是难度≥3 时不应再被旧日支配者限制。
  */
 export function hasLowerAlternative(state, playerIndex, excludeCardId) {
-  const accessible = getAccessibleFish(state);
-  return accessible.some((id) => {
+  return state.drawn.some((id) => {
     if (id === excludeCardId) return false;
     const c = CARD_BY_ID[id];
     if (c.strength >= 3) return false;

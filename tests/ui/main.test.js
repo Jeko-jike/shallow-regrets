@@ -234,3 +234,34 @@ describe('卡背难度区间 difficultyRange（固定三段）', () => {
     expect(badges).toEqual(['3-5', '1-2', '0']);
   });
 });
+
+describe('renderPlayersBar：联机在线/掉线徽标', () => {
+  const state = {
+    currentPlayer: 0,
+    players: [
+      { id: 0, name: '虾米', caught: [], exhausted: 0, snowGuard: false, powerBonus: 0 },
+      { id: 1, name: '蓝鳍', caught: [], exhausted: 0, snowGuard: false, powerBonus: 0 },
+    ],
+  };
+
+  it('联机传入 meta：在线玩家显示"在线"，掉线玩家显示"掉线·AI托管"', () => {
+    const el = document.createElement('div');
+    const meta = [
+      { id: 0, name: '虾米', connected: true, ai: false },
+      { id: 1, name: '蓝鳍', connected: false, ai: true },
+    ];
+    render.renderPlayersBar(el, state, meta);
+    const badges = el.querySelectorAll('.p-status');
+    expect(badges.length).toBe(2);
+    expect(badges[0].classList.contains('online')).toBe(true);
+    expect(badges[0].textContent).toBe('在线');
+    expect(badges[1].classList.contains('offline')).toBe(true);
+    expect(badges[1].textContent).toBe('掉线·AI托管');
+  });
+
+  it('非联机（不传 meta）不渲染徽标，兼容离线模式', () => {
+    const el = document.createElement('div');
+    render.renderPlayersBar(el, state);
+    expect(el.querySelectorAll('.p-status').length).toBe(0);
+  });
+});

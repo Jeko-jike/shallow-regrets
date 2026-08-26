@@ -106,14 +106,26 @@ export function renderTurnInfo(el, state) {
   el.textContent = `第 ${state.turn} 回合 · ${state.players[state.currentPlayer].name} · ${PHASE_NAMES[state.phase] || state.phase}`;
 }
 
-export function renderPlayersBar(el, state) {
+export function renderPlayersBar(el, state, meta) {
   el.innerHTML = '';
+  // meta：联机时玩家元信息 [{id, connected, ai}]，用于显示在线/掉线；离线模式不传则无徽标
+  const statusMap = {};
+  if (Array.isArray(meta)) for (const m of meta) if (m && m.id != null) statusMap[m.id] = m;
   state.players.forEach((p, i) => {
     const chip = document.createElement('div');
     chip.className = 'player-chip' + (i === state.currentPlayer ? ' active' : '');
     const name = document.createElement('div');
     name.className = 'p-name';
-    name.textContent = p.name;
+    const mInfo = statusMap[p.id];
+    if (mInfo) {
+      const badge = document.createElement('span');
+      badge.className = 'p-status ' + (mInfo.connected ? 'online' : 'offline');
+      badge.textContent = mInfo.connected ? '在线' : (mInfo.ai ? '掉线·AI托管' : '掉线');
+      name.appendChild(badge);
+    }
+    const nameText = document.createElement('span');
+    nameText.textContent = p.name;
+    name.appendChild(nameText);
     const stats = document.createElement('div');
     stats.className = 'p-stats';
     const score = document.createElement('div');

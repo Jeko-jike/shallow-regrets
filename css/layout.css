@@ -285,6 +285,32 @@
   color: var(--foul);
 }
 
+/* 联机对局内在线/掉线徽标 */
+.player-chip .p-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-chip .p-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.player-chip .p-status.online {
+  color: var(--accent);
+  border-color: rgba(52, 211, 153, 0.45);
+}
+
+.player-chip .p-status.offline {
+  color: var(--foul);
+  border-color: rgba(239, 109, 109, 0.45);
+}
+
 /* 中央区：浅滩 + 抽出牌 */
 .board-center {
   display: flex;
@@ -527,6 +553,11 @@
 .lobby-player .lp-tag.offline {
   color: var(--foul);
   border-color: rgba(239, 109, 109, 0.4);
+}
+
+.lobby-player .lp-tag.online {
+  color: var(--accent);
+  border-color: rgba(52, 211, 153, 0.4);
 }
 
 .lobby-player .lp-kick {

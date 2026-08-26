@@ -51,7 +51,11 @@ const online = {
   inGame: false,
   myReady: false,
   myName: '',
+  connected: false, // socket 传输层是否已连接
+  connectTimer: null, // 进房等待超时定时器
 };
+
+const ONLINE_CONNECT_TIMEOUT = 6000;
 
 setLogLevel('info');
 
@@ -190,7 +194,7 @@ function renderAll() {
   const ui = getUi();
   const I = game.interaction;
   render.renderTurnInfo($('turnInfo'), s);
-  render.renderPlayersBar($('playersBar'), s);
+  render.renderPlayersBar($('playersBar'), s, game.mode === 'm3' ? online.players : undefined);
   render.renderShoals($('shoalsRow'), s, ui, { onShoalClick: I.onShoalClick });
   render.renderDrawn($('drawnArea'), s, ui, {
     canCatch: (cardId) => canCatch(s, s.currentPlayer, cardId) && s.caughtThisTurn < getCatchLimit(s),
@@ -251,6 +255,7 @@ function openM3Setup() {
             return;
           }
           online.myName = name;
+          openLobbyWaiting();
           connectOnline();
           if (tab === 'create') online.client.create(name);
           else online.client.join(code, name);
@@ -260,23 +265,58 @@ function openM3Setup() {
   });
 }
 
+function openLobbyWaiting() {
+  // 点击"进入房间"立即展示等待大厅：连接中、房间码占位，待服务器回包后回填
+  clearTimeout(online.connectTimer);
+  online.inGame = false;
+  online.roomCode = null;
+  online.playerId = null;
+  online.isHost = false;
+  online.myReady = false;
+  online.connected = false;
+  online.players = [];
+  $('lobbyCode').textContent = '----';
+  $('lobbyConn').textContent = '连接中…';
+  $('lobbyConn').className = 'lobby-conn';
+  $('lobbyPlayers').innerHTML = '';
+  $('lobbyHint').textContent = '正在连接服务器，请稍候…';
+  $('btnReady').disabled = true;
+  $('btnStart').style.display = 'none';
+  showScreen('lobby');
+}
+
 function connectOnline() {
   if (online.client) return;
   const client = new SocketClient();
   online.client = client;
+
+  const clearConnectTimer = () => clearTimeout(online.connectTimer);
   client.connect({
     onConnect: () => {
-      $('#lobbyConn').textContent = '已连接';
-      $('#lobbyConn').className = 'lobby-conn online';
+      online.connected = true;
+      $('lobbyConn').textContent = '已连接';
+      $('lobbyConn').className = 'lobby-conn online';
     },
     onDisconnect: () => {
-      $('#lobbyConn').textContent = '连接断开';
-      $('#lobbyConn').className = 'lobby-conn offline';
-      modal.showToast('与服务器的连接已断开', 'error');
+      online.connected = false;
+      $('lobbyConn').textContent = '连接断开';
+      $('lobbyConn').className = 'lobby-conn offline';
+      if (!online.inGame) clearConnectTimer();
     },
   });
 
+  // 进房等待超时：连接不上（如用 file:// 双击离线版打开、或服务器未启动）时给明确提示
+  online.connectTimer = setTimeout(() => {
+    if (online.inGame || online.roomCode != null) return;
+    online.client?.disconnect();
+    $('lobbyConn').textContent = '连接超时';
+    $('lobbyConn').className = 'lobby-conn offline';
+    $('lobbyHint').textContent = '无法连接服务器，请用「一键启动联网游戏.bat」打开游戏后再进联机';
+    modal.showToast('无法连接服务器，请用「一键启动联网游戏.bat」启动后重试', 'error');
+  }, ONLINE_CONNECT_TIMEOUT);
+
   client.on(MSG.JOINED, (payload) => {
+    clearConnectTimer();
     online.roomCode = payload.roomCode;
     online.playerId = payload.playerId;
     online.isHost = payload.isHost;
@@ -292,6 +332,7 @@ function connectOnline() {
   });
 
   client.on(MSG.JOIN_ERROR, (payload) => {
+    clearTimeout(online.connectTimer);
     modal.showToast(payload.message || '加入失败', 'error');
   });
 
@@ -341,8 +382,8 @@ function connectOnline() {
 }
 
 function renderLobby(room) {
-  $('#lobbyCode').textContent = room.code;
-  const list = $('#lobbyPlayers');
+  $('lobbyCode').textContent = room.code;
+  const list = $('lobbyPlayers');
   list.innerHTML = '';
   room.players.forEach((p) => {
     const row = document.createElement('div');
@@ -363,6 +404,12 @@ function renderLobby(room) {
       tag.textContent = '已准备';
       row.appendChild(tag);
     }
+    if (p.connected) {
+      const tag = document.createElement('span');
+      tag.className = 'lp-tag online';
+      tag.textContent = '在线';
+      row.appendChild(tag);
+    }
     if (!p.connected) {
       const tag = document.createElement('span');
       tag.className = 'lp-tag offline';
@@ -381,12 +428,13 @@ function renderLobby(room) {
 
   const me = room.players.find((p) => p.id === online.playerId);
   online.myReady = !!me?.ready;
-  $('#btnReady').textContent = online.myReady ? '取消准备' : '准备';
-  $('#btnReady').classList.toggle('btn-primary', !online.myReady);
-  $('#btnReady').classList.toggle('btn-ghost', online.myReady);
-  $('#btnStart').style.display = online.isHost ? '' : 'none';
-  $('#btnStart').disabled = !room.players.every((p) => p.ready) || room.players.length < 2;
-  $('#lobbyHint').textContent = online.isHost
+  $('btnReady').disabled = false;
+  $('btnReady').textContent = online.myReady ? '取消准备' : '准备';
+  $('btnReady').classList.toggle('btn-primary', !online.myReady);
+  $('btnReady').classList.toggle('btn-ghost', online.myReady);
+  $('btnStart').style.display = online.isHost ? '' : 'none';
+  $('btnStart').disabled = !room.players.every((p) => p.ready) || room.players.length < 2;
+  $('lobbyHint').textContent = online.isHost
     ? '等待所有玩家准备后即可开始对局'
     : '点击「准备」，等待房主开始对局';
 }
@@ -400,7 +448,7 @@ function startOnlineGame(state, players) {
   game.interaction = makeInteraction();
   online.players = players || [];
   // 联机模式隐藏热座遮挡按钮
-  $('#btnCoverToggle').style.display = 'none';
+  $('btnCoverToggle').style.display = 'none';
   showScreen('game');
   renderAll();
 }
@@ -417,7 +465,7 @@ function leaveOnline() {
   online.myReady = false;
   game.state = null;
   game.mode = null;
-  $('#btnCoverToggle').style.display = '';
+  $('btnCoverToggle').style.display = '';
   showScreen('home');
 }
 

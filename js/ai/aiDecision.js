@@ -3,7 +3,7 @@
  * 把 AI 的动作翻译成人类可读的中文说明，展示其"判定路径"。
  */
 import { CARD_BY_ID } from '../core/cards.js';
-import { ABILITY_DESCRIPTIONS } from '../core/abilities.js';
+import { ABILITIES } from '../core/abilities.js';
 
 /** 描述一个 AI 动作（用于战斗日志逐条记录） */
 export function describeAction(state, action) {
@@ -11,7 +11,7 @@ export function describeAction(state, action) {
   switch (action.type) {
     case 'USE_ABILITY': {
       const card = CARD_BY_ID[action.cardId];
-      const desc = ABILITY_DESCRIPTIONS[card.ability] || '';
+      const desc = ABILITIES[card.ability]?.desc || '';
       return `${p.name} 发动「${card.name}」的能力：${desc}`;
     }
     case 'PASS_ABILITIES':
@@ -47,7 +47,7 @@ export function explainDecision(state, action) {
     );
     parts.push(`钩数 ${hooks} ≥ 所需 ${card.strength}，可钓`);
     if (card.type === 'foul') parts.push('污秽鱼，价值折减');
-    if (card.ability) parts.push(`含能力「${ABILITY_DESCRIPTIONS[card.ability]}」，加分`);
+    if (card.ability) parts.push(`含能力「${ABILITIES[card.ability]?.desc || ''}」，加分`);
     parts.push(`综合价值 ${card.points} 分`);
   } else if (action.type === 'THROW_BACK') {
     parts.push('无可钓牌或已钓一条，放回合法浅滩');
@@ -55,7 +55,7 @@ export function explainDecision(state, action) {
     parts.push('按顶牌可钓性与价值选择浅滩');
   } else if (action.type === 'USE_ABILITY') {
     const card = CARD_BY_ID[action.cardId];
-    parts.push(`评估「${card.name}」能力：${ABILITY_DESCRIPTIONS[card.ability]}`);
+    parts.push(`评估「${card.name}」能力：${ABILITIES[card.ability]?.desc || ''}`);
   } else if (action.type === 'PASS_ABILITIES') {
     parts.push('无值得发动的能力');
   }

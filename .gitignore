@@ -20,3 +20,9 @@ Thumbs.db
 
 # 测试覆盖率
 coverage/
+
+# 构建缓存
+.vite/
+
+# 需求原始文档（非游戏源码/资产，不入库）
+24cards.docx

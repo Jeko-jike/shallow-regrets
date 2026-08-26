@@ -101,7 +101,7 @@ describe('SoloController: 结算评价', () => {
     expect(goals.noFoul.done).toBe(false);
     expect(goals.noFoul.status).toBe('progress');
     // 钓到污秽鱼后立即转失败
-    c.state.players[c.playerIndex].caught = ['jellyfish'];
+    c.state.players[c.playerIndex].caught = ['rotfish'];
     const failed = c.getLiveGoals();
     expect(failed.noFoul.status).toBe('failed');
     expect(failed.noFoul.done).toBe(false);

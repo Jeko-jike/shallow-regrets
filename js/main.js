@@ -1,19 +1,13 @@
 /**
  * 前端入口：初始化、模式路由、启动游戏。
  * 持有对局状态，派发动作，驱动渲染与交互。
+ * 玩家交互统一走 ui/boardInteraction.js（能力瞄准 + 反应窗口弹窗）。
  */
 import { createInitialState } from './core/gameState.js';
 import { applyAction, ACTION, PHASE } from './core/stateMachine.js';
 import { getWinners } from './core/scoring.js';
 import { CARD_BY_ID } from './core/cards.js';
-import { ABILITY_DESCRIPTIONS } from './core/abilities.js';
-import { getArtUrl } from './data/artPrompts.js';
-import {
-  getRequiredDrawCount,
-  canCatch,
-  getCatchableDrawn,
-  getLegalThrowTargets,
-} from './core/rules.js';
+import { canCatch } from './core/rules.js';
 import { logger, setLogLevel } from './utils/logger.js';
 import { chooseAction } from './ai/heuristicAI.js';
 import { SocketClient } from './net/socketClient.js';
@@ -22,6 +16,7 @@ import * as render from './ui/render.js';
 import * as anim from './ui/animations.js';
 import * as modal from './ui/modal.js';
 import * as inter from './ui/interaction.js';
+import { createBoardInteraction } from './ui/boardInteraction.js';
 import * as spectateUI from './ui/spectateUI.js';
 import * as soloUI from './ui/soloUI.js';
 import { showScreen } from './ui/screens.js';
@@ -38,9 +33,11 @@ const game = {
     selectedShoals: [], // 抽牌阶段已选浅滩（含重复，表示同一浅滩抽 2 张）
     throwCardId: null, // 放回阶段正在选择目标浅滩的牌
     abilityCardId: null, // 正在选择目标的能力鱼
-    swapStep: null, // swap_fish 步骤：'own' | 'opp'
-    swapOwn: null, // swap_fish 已选自己的鱼
+    aimShoals: [], // peek_multi 已选浅滩
+    swapStep: null, // swap_* 步骤：'own' | 'opp'
+    swapOwn: null, // swap_* 已选自己的鱼
   },
+  interaction: null,
   aiTimer: null,
 };
 
@@ -66,7 +63,8 @@ function startGame(config) {
   game.settings.cover = config.cover ?? true;
   game.ai = config.aiFlags || config.names.map(() => false);
   game.state = createInitialState({ seed: config.seed, playerNames: config.names });
-  game.ui = { selectedShoals: [], throwCardId: null, abilityCardId: null, swapStep: null, swapOwn: null };
+  game.ui = { selectedShoals: [], throwCardId: null, abilityCardId: null, aimShoals: [], swapStep: null, swapOwn: null };
+  game.interaction = makeInteraction();
   $('soloResult').style.display = 'none';
   showScreen('game');
   renderAll();
@@ -76,6 +74,16 @@ function startGame(config) {
   } else {
     maybeRunAI();
   }
+}
+
+/** 用当前 game.ui/state 重建交互器（单局一次即可；闭包读取实时状态） */
+function makeInteraction() {
+  return createBoardInteraction({
+    getState: () => game.state,
+    getUi: () => game.ui,
+    dispatch: (action) => dispatch(action),
+    renderAll,
+  });
 }
 
 function dispatch(action) {
@@ -99,6 +107,9 @@ function dispatch(action) {
     showResult();
     return true;
   }
+  if (res.state.phase === PHASE.PENDING && game.interaction) {
+    game.interaction.showPendingResolution();
+  }
   maybeRunAI();
   return true;
 }
@@ -113,7 +124,7 @@ function handleEvents(events) {
 
 function maybeRunAI() {
   const s = game.state;
-  if (!s || s.phase === PHASE.GAME_OVER) return;
+  if (!s || s.phase === PHASE.GAME_OVER || s.phase === PHASE.PENDING) return; // 反应窗口留给玩家，AI 不抢答
   if (game.mode === 'm3') return; // 联机 AI 托管由服务端驱动
   if (!game.ai[s.currentPlayer]) return;
   clearTimeout(game.aiTimer);
@@ -138,212 +149,6 @@ function showResult() {
   logger.info('game', 'game_over', { winners: getWinners(game.state) });
 }
 
-/* ===== 交互处理 ===== */
-function onShoalClick(i) {
-  const s = game.state;
-  const ui = game.ui;
-
-  if (s.phase === PHASE.DRAW) {
-    const required = getRequiredDrawCount(s);
-    const count = ui.selectedShoals.filter((x) => x === i).length;
-    const max = Math.min(2, s.shoals[i].length); // 同一浅滩最多抽其现有张数
-    if (count > 0 && (count >= max || ui.selectedShoals.length >= required)) {
-      // 已选浅滩在"选满"时点击 = 取消该浅滩全部选择
-      ui.selectedShoals = ui.selectedShoals.filter((x) => x !== i);
-    } else if (ui.selectedShoals.length < required && count < max) {
-      ui.selectedShoals.push(i);
-    } else {
-      modal.showToast(`本回合需抽 ${required} 张，已选 ${ui.selectedShoals.length} 张，点击已选浅滩可取消`, 'info');
-    }
-    renderAll();
-    return;
-  }
-
-  if (s.phase === PHASE.CATCH && ui.throwCardId != null) {
-    const legal = getLegalThrowTargets(s);
-    if (legal.includes(i)) {
-      const cardId = ui.throwCardId;
-      ui.throwCardId = null;
-      dispatch({ type: ACTION.THROW_BACK, cardId, shoalIndex: i });
-    }
-    return;
-  }
-
-  if (s.phase === PHASE.ABILITY && ui.abilityCardId) {
-    const ability = CARD_BY_ID[ui.abilityCardId].ability;
-    if (ability === 'peek_shoal') {
-      if (s.shoals[i].length === 0) {
-        modal.showToast('该浅滩为空，无法偷看', 'error');
-        return;
-      }
-      const cardId = ui.abilityCardId;
-      ui.abilityCardId = null;
-      dispatch({ type: ACTION.USE_ABILITY, cardId, target: { shoalIndex: i } });
-      const lastPeek = game.state.lastPeek;
-      if (lastPeek) {
-        const c = CARD_BY_ID[lastPeek.cardId];
-        modal.showModal({
-          title: '偷看结果',
-          body: `<p>浅滩${lastPeek.shoalIndex + 1} 的顶牌是：<strong>「${c.name}」</strong>（${c.points} 分，需 ${c.strength} 钩）</p>`,
-          actions: [{ text: '知道了' }],
-        });
-      }
-    }
-  }
-}
-
-function onFishClick(playerIndex, cardId) {
-  const s = game.state;
-  const ui = game.ui;
-  const me = s.currentPlayer;
-
-  // 能力目标选择流程优先：此时点击被用作"选择目标"，而非打开详情
-  if (s.phase === PHASE.ABILITY && ui.abilityCardId) {
-    const ability = CARD_BY_ID[ui.abilityCardId].ability;
-    // 交换：点自己的鱼 = 选择要换出的鱼
-    if (playerIndex === me && ability === 'swap_fish' && ui.swapStep === 'own') {
-      ui.swapOwn = cardId;
-      ui.swapStep = 'opp';
-      modal.showToast('请点击对方的一条鱼进行交换', 'info');
-      renderAll();
-      return;
-    }
-    // 横置/交换：点对方的鱼 = 选择目标
-    if (playerIndex !== me) {
-      if (ability === 'force_exhaust') {
-        const cardId2 = ui.abilityCardId;
-        ui.abilityCardId = null;
-        dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target: { cardId } });
-        return;
-      }
-      if (ability === 'swap_fish' && ui.swapStep === 'opp') {
-        const cardId2 = ui.abilityCardId;
-        const ownCardId = ui.swapOwn;
-        ui.abilityCardId = null;
-        ui.swapStep = null;
-        ui.swapOwn = null;
-        dispatch({ type: ACTION.USE_ABILITY, cardId: cardId2, target: { ownCardId, oppCardId: cardId } });
-        return;
-      }
-    }
-    return;
-  }
-
-  // 其余情况：打开卡牌详情（能力鱼可在详情中选择发动能力）
-  showCardDetail(playerIndex, cardId);
-}
-
-/** 打开卡牌详情：展示能力、卡图与数值；能力鱼在能力阶段可从这里发动 */
-function showCardDetail(playerIndex, cardId) {
-  const s = game.state;
-  const card = CARD_BY_ID[cardId];
-  const owner = playerIndex != null ? s.players[playerIndex] : null;
-  const exhausted = !!(owner && owner.exhausted.includes(cardId));
-  const canAct =
-    s.phase === PHASE.ABILITY && owner && playerIndex === s.currentPlayer && !!card.ability && !exhausted;
-
-  const body = document.createElement('div');
-  body.className = 'card-detail';
-  const art = document.createElement('div');
-  art.className = 'cd-art';
-  const img = document.createElement('img');
-  img.src = getArtUrl(card.art);
-  img.alt = card.name;
-  art.appendChild(img);
-  const info = document.createElement('div');
-  info.className = 'cd-info';
-  info.innerHTML = `
-    <div class="cd-name">${card.name}<span class="cd-en"> ${card.nameEn}</span></div>
-    <div class="cd-tags">
-      ${card.type === 'foul' ? '<span class="cd-tag foul">污秽</span>' : ''}
-      <span class="cd-tag">${card.points} 分</span>
-      <span class="cd-tag">需 ${card.strength}⚓</span>
-      <span class="cd-tag">供 ${card.hooks}⚓</span>
-    </div>
-    <div class="cd-ability"><b>能力：</b>${card.ability ? ABILITY_DESCRIPTIONS[card.ability] : '无'}</div>
-  `;
-  body.appendChild(art);
-  body.appendChild(info);
-
-  const actions = [{ text: '知道了', className: 'btn-ghost' }];
-  if (canAct) {
-    actions.unshift({ text: '发动能力', className: 'btn-primary', onClick: () => activateAbility(cardId) });
-  }
-  modal.showModal({ title: '卡牌详情', body, actions });
-}
-
-function activateAbility(cardId) {
-  const card = CARD_BY_ID[cardId];
-  const ability = card.ability;
-  const desc = ABILITY_DESCRIPTIONS[ability] || '';
-  const ui = game.ui;
-
-  const noTarget = ['draw_extra', 'shuffle_shoals', 'immunity'].includes(ability);
-  if (noTarget) {
-    modal.showConfirm({
-      title: `发动「${card.name}」`,
-      message: `发动能力：${desc}？发动后该鱼将横置（整局仅一次）。`,
-      confirmText: '发动',
-      onConfirm: () => dispatch({ type: ACTION.USE_ABILITY, cardId }),
-    });
-    return;
-  }
-
-  // 需要选择目标
-  ui.abilityCardId = cardId;
-  if (ability === 'swap_fish') {
-    ui.swapStep = 'own';
-    modal.showToast('请点击你要交换出去的一条鱼', 'info');
-  } else {
-    modal.showToast(ability === 'peek_shoal' ? '请点击一个浅滩偷看其顶牌' : '请点击对方的一条鱼', 'info');
-  }
-  renderAll();
-}
-
-function onPassAbilities() {
-  const ui = game.ui;
-  ui.abilityCardId = null;
-  ui.swapStep = null;
-  ui.swapOwn = null;
-  dispatch({ type: ACTION.PASS_ABILITIES });
-}
-
-function onConfirmDraw() {
-  const ui = game.ui;
-  const required = getRequiredDrawCount(game.state);
-  if (ui.selectedShoals.length !== required) return;
-  const from = ui.selectedShoals;
-  ui.selectedShoals = [];
-  dispatch({ type: ACTION.DRAW, from });
-}
-
-/** 清空本回合已选浅滩（抽牌阶段一键重选） */
-function onClearDraw() {
-  if (game.ui.selectedShoals.length === 0) return;
-  game.ui.selectedShoals = [];
-  renderAll();
-}
-
-function onCatch(cardId) {
-  dispatch({ type: ACTION.CATCH, cardId });
-}
-
-function onThrowClick(cardId) {
-  const s = game.state;
-  if (!s.caughtThisTurn && getCatchableDrawn(s).length > 0) {
-    modal.showToast('有可钓走的鱼，请先钓走一条', 'error');
-    return;
-  }
-  game.ui.throwCardId = cardId;
-  modal.showToast('请点击一个浅滩放回该牌', 'info');
-  renderAll();
-}
-
-function onCancelThrow() {
-  game.ui.throwCardId = null;
-  renderAll();
-}
-
 /* ===== 交互描述（供渲染层读取） ===== */
 function getUi() {
   const s = game.state;
@@ -358,16 +163,22 @@ function getStatusText() {
   switch (s.phase) {
     case PHASE.ABILITY:
       if (ui.abilityCardId) {
-        const ability = CARD_BY_ID[ui.abilityCardId].ability;
-        if (ability === 'peek_shoal') return '点击一个浅滩偷看其顶牌';
-        if (ability === 'force_exhaust') return '点击对方的一条鱼强制横置';
-        if (ability === 'swap_fish') return ui.swapStep === 'own' ? '点击你要交换出去的一条鱼' : '点击对方的一条鱼进行交换';
+        const aim = inter.abilityAim(s, ui);
+        if (aim?.mode === 'shoalPeek') return (ui.aimShoals?.length ?? 0) ? `已选 ${ui.aimShoals.length}/3 个，点击"确认查看"` : '点击 1-3 个浅滩查看其顶牌';
+        if (aim?.mode === 'shoalZero') return '点击一张难度 0 的鱼牌所在浅滩';
+        if (aim?.mode === 'shoal') return '点击要重排的鱼群';
+        if (aim?.mode === 'swapOwn') return '点击你要交换出去的一条鱼';
+        if (aim?.mode === 'swapOpp') return '点击对方的一条鱼进行交换';
+        if (aim?.mode === 'player') return '点击对方的一位玩家（把断脚交给他）';
+        if (aim?.mode === 'oppFish') return '点击对方的一条鱼';
       }
       return '可点击已钓的能力鱼发动能力，或跳过';
     case PHASE.DRAW:
-      return inter.getDrawInteraction(s, game.ui).hint;
+      return inter.getDrawInteraction(s, ui).hint;
     case PHASE.CATCH:
       return inter.getCatchInteraction(s).hint;
+    case PHASE.PENDING:
+      return '待决策：请查看弹窗并选择';
     default:
       return '';
   }
@@ -377,25 +188,27 @@ function renderAll() {
   const s = game.state;
   if (!s) return;
   const ui = getUi();
+  const I = game.interaction;
   render.renderTurnInfo($('turnInfo'), s);
   render.renderPlayersBar($('playersBar'), s);
-  render.renderShoals($('shoalsRow'), s, ui, { onShoalClick });
+  render.renderShoals($('shoalsRow'), s, ui, { onShoalClick: I.onShoalClick });
   render.renderDrawn($('drawnArea'), s, ui, {
     canCatch: (cardId) => canCatch(s, s.currentPlayer, cardId) && !s.caughtThisTurn,
-    onCatch,
-    onThrowClick,
-    onPassAbilities,
-    onConfirmDraw,
-    onClearDraw,
-    onCancelThrow,
-    onCardInfo: (cardId) => showCardDetail(undefined, cardId),
+    onCatch: I.onCatch,
+    onThrowClick: I.onThrowClick,
+    onPassAbilities: I.onPassAbilities,
+    onConfirmDraw: I.onConfirmDraw,
+    onClearDraw: I.onClearDraw,
+    onCancelThrow: I.onCancelThrow,
+    onConfirmPeek: I.onConfirmPeek,
+    onCancelAim: I.onCancelAim,
+    onCardInfo: (cardId) => I.showCardDetail(s.currentPlayer, cardId),
   });
-  render.renderCaught($('playersCaught'), s, ui, { onFishClick });
+  render.renderCaught($('playersCaught'), s, ui, { onFishClick: I.onFishClick });
   render.renderActionBar($('actionBar'), s, ui, {
-    onPassAbilities,
-    onConfirmDraw,
-    onClearDraw,
-    onCancelThrow,
+    onPassAbilities: I.onPassAbilities,
+    onConfirmDraw: I.onConfirmDraw,
+    onCancelThrow: I.onCancelThrow,
   });
   render.renderStatus($('statusLine'), s, ui);
 }
@@ -583,7 +396,8 @@ function startOnlineGame(state, players) {
   game.mode = 'm3';
   game.ai = [];
   game.state = state;
-  game.ui = { selectedShoals: [], throwCardId: null, abilityCardId: null, swapStep: null, swapOwn: null };
+  game.ui = { selectedShoals: [], throwCardId: null, abilityCardId: null, aimShoals: [], swapStep: null, swapOwn: null };
+  game.interaction = makeInteraction();
   online.players = players || [];
   // 联机模式隐藏热座遮挡按钮
   $('#btnCoverToggle').style.display = 'none';

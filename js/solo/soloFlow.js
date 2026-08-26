@@ -4,10 +4,24 @@
  * 特色机制（压迫节奏 / 星级评价）见 docs/RULES.md 第十一章。
  */
 import { createInitialState } from '../core/gameState.js';
-import { applyAction, PHASE } from '../core/stateMachine.js';
+import { applyAction, ACTION, PHASE } from '../core/stateMachine.js';
+import { autoResolution } from '../core/abilities.js';
 import { getResults } from '../core/scoring.js';
 import { CARD_BY_ID } from '../core/cards.js';
 import { chooseScriptAction, SCRIPT_NAME, TARGETS } from './soloScript.js';
+
+/** 当前 pending 窗口是否轮到脚本决策 */
+function shouldScriptResolve(state, scriptIndex) {
+  const p = state.pending;
+  if (!p) return false;
+  switch (p.type) {
+    case 'REDIRECT': return p.candidates.includes(scriptIndex);
+    case 'COUNTER': return p.counterP === scriptIndex;
+    case 'REARRANGE': return p.owner === scriptIndex;
+    case 'PASS_LEFT': return p.playerIndices[p.current] === scriptIndex;
+    default: return false;
+  }
+}
 
 export class SoloController {
   /**
@@ -37,12 +51,13 @@ export class SoloController {
     const res = applyAction(this.state, action);
     if (res.error) return res.error;
     this.state = res.state;
+    this.drainScriptPending();
     this.onUpdate?.(this.state);
     if (this.state.phase === PHASE.GAME_OVER) this.onGameOver?.();
     return null;
   }
 
-  /** 脚本执行一个动作（确定性剧本决策） */
+  /** 脚本执行一个动作（确定性剧本决策，含让脚本自动消解其反应窗口） */
   runScriptAction() {
     if (!this.isScriptTurn()) return false;
     const action = chooseScriptAction(this.state);
@@ -50,9 +65,20 @@ export class SoloController {
     const res = applyAction(this.state, action);
     if (res.error) return false;
     this.state = res.state;
+    this.drainScriptPending();
     this.onUpdate?.(this.state);
     if (this.state.phase === PHASE.GAME_OVER) this.onGameOver?.();
     return true;
+  }
+
+  /** 玩家/脚本动作后，自动消解轮到脚本的 pending 窗口（避免 Solo 卡死） */
+  drainScriptPending() {
+    let guard = 0;
+    while (this.state.phase === PHASE.PENDING && shouldScriptResolve(this.state, this.scriptIndex) && guard++ < 20) {
+      const res = applyAction(this.state, { type: ACTION.RESOLVE, resolution: autoResolution(this.state) });
+      if (res.error) break;
+      this.state = res.state;
+    }
   }
 
   /**

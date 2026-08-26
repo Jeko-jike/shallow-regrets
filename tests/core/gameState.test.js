@@ -39,20 +39,21 @@ describe('gameState.js 初始状态', () => {
     for (const p of state.players) {
       expect(p.caught).toEqual([]);
       expect(p.exhausted).toEqual([]);
-      expect(p.immune).toBe(false);
+      expect(p.immune).toBe(undefined);
+      expect(p.snowGuard).toBe(false);
     }
     expect(getHooks(state, 0)).toBe(0);
     expect(getTotalCaught(state)).toBe(0);
   });
 
-  it('钩子机制：仅分值 ≤3 的鱼提供钩数，大鱼（分值>3）不供钩（平衡性调整）', () => {
+  it('钩子机制：已钓获卡 hooks 之和，分值>3 的大鱼不供钩', () => {
     const state = createInitialState({ seed: 1, playerNames: ['A', 'B'] });
-    state.players[0].caught = ['sardine', 'clownfish']; // 1+1
+    state.players[0].caught = ['lamprey', 'barracuda']; // 1+1
     expect(getHooks(state, 0)).toBe(2);
-    state.players[0].caught = ['lamprey', 'barracuda', 'kraken']; // 1 + 0 + 0
+    state.players[0].caught = ['lamprey', 'kraken']; // 1+0
     expect(getHooks(state, 0)).toBe(1);
-    expect(CARD_BY_ID['sardine'].hooks).toBe(1);
-    expect(CARD_BY_ID['sardine'].strength).toBe(0); // 难度与提供钩数分离
+    expect(CARD_BY_ID['lamprey'].hooks).toBe(1);
+    expect(CARD_BY_ID['lamprey'].strength).toBe(0); // 难度与提供钩数分离
     // 所有分值 > 3 的卡一律不提供钩数（大鱼为终局渔获，钩数靠小鱼积累）
     for (const c of CARDS) {
       if (c.points > 3) expect(c.hooks, `${c.id} 分值>3 但提供钩数`).toBe(0);

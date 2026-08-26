@@ -3,14 +3,14 @@ import { CARDS, CARD_BY_ID, TOTAL_CARDS } from '../../js/core/cards.js';
 import { ABILITY_TYPES } from '../../js/core/abilities.js';
 
 describe('cards.js 卡牌数据', () => {
-  it('恰好 18 张卡牌', () => {
-    expect(TOTAL_CARDS).toBe(18);
-    expect(CARDS).toHaveLength(18);
+  it('恰好 24 张卡牌', () => {
+    expect(TOTAL_CARDS).toBe(24);
+    expect(CARDS).toHaveLength(24);
   });
 
   it('id 唯一且 CARD_BY_ID 索引完整', () => {
     const ids = CARDS.map((c) => c.id);
-    expect(new Set(ids).size).toBe(18);
+    expect(new Set(ids).size).toBe(24);
     for (const c of CARDS) {
       expect(CARD_BY_ID[c.id]).toBe(c);
     }
@@ -23,7 +23,6 @@ describe('cards.js 卡牌数据', () => {
       expect(c.strength).toBeLessThanOrEqual(5);
       expect(['fair', 'foul']).toContain(c.type);
       expect(c.ability === null || Object.values(ABILITY_TYPES).includes(c.ability)).toBe(true);
-      expect(typeof c.art).toBe('string');
     }
   });
 
@@ -36,7 +35,7 @@ describe('cards.js 卡牌数据', () => {
     const foul = CARDS.filter((c) => c.type === 'foul');
     expect(foul.length).toBeGreaterThanOrEqual(4);
     const fair = CARDS.filter((c) => c.type === 'fair');
-    expect(fair.length).toBe(18 - foul.length);
+    expect(fair.length).toBe(24 - foul.length);
   });
 
   it('能力类型覆盖 6 种能力', () => {

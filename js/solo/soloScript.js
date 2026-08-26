@@ -18,10 +18,10 @@ import {
 export const SCRIPT_NAME = '渔夫与青蛙';
 
 /** 目标清单：脚本对手偏好的 6 张固定卡牌（按优先级从高到低，见 RULES.md 11.2） */
-export const TARGETS = ['kraken', 'kelpie', 'oarfish', 'eversquid', 'barracuda', 'morayEel'];
+export const TARGETS = ['kraken', 'kelpie', 'oarfish', 'everSquid', 'barracuda', 'mermaid'];
 
-/** 能力发动固定顺序（已钓且未横置时依次尝试，全部为无目标能力） */
-export const ABILITY_ORDER = ['kraken', 'kelpie', 'oarfish', 'eversquid', 'morayEel'];
+/** 能力发动固定顺序（已钓且未横置时依次尝试，全部为无目标主动能力） */
+export const ABILITY_ORDER = ['oarfish', 'lamprey', 'greatWhite', 'kelpie', 'seaBishop', 'snowEel'];
 
 /** 一张牌是否在目标清单内 */
 export function isTarget(cardId) {

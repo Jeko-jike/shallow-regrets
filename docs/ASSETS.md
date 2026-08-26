@@ -5,38 +5,39 @@
 
 ## 一、卡面（AI 生成）
 
-18 张鱼卡 + 卡背插画全部由 AI 生成，提示词清单见 `js/data/artPrompts.js`（中 + 英双语）。
+24 张鱼卡全部由 AI 生成，提示词清单见 `js/data/artPrompts.js`（中 + 英双语，统一克苏鲁 + 海洋恐怖 + 手绘水彩风格）。
 
-- 统一风格：克苏鲁 + 海洋恐怖 + 手绘漫画/水彩。
-- 渲染接口（唯一允许来源，prompt 需 URL 编码）：
+**本地方案（不再依赖外网图片接口）**：卡图存于 `public/cards/{id}.jpg`，`getArtUrl(id)` 返回相对路径 `cards/{id}.jpg`，构建时由 Vite 复制到 `dist/cards/`。本地双击、GitHub Pages（根/子路径）均稳定加载，因此 `assets/` 目录保持为空。
 
-  ```
-  https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt={prompt}&image_size=square_hd
-  ```
+| 卡牌 id | 中文名 | 英文名 | 类型 | 提示词 key |
+|---------|--------|--------|------|------------|
+| lamprey | 七鳃鳗 | Lamprey | fair 正品 | `ART_PROMPTS.lamprey` |
+| seaBishop | 海主教 | Sea Bishop | foul 邪秽 | `ART_PROMPTS.seaBishop` |
+| seaMonkey | 海猴 | Sea Monkey | foul 邪秽 | `ART_PROMPTS.seaMonkey` |
+| severedFoot | 断脚 | Severed Foot | foul 邪秽 | `ART_PROMPTS.severedFoot` |
+| eyeballBlob | 眼球团 | Eyeball Blob | foul 邪秽 | `ART_PROMPTS.eyeballBlob` |
+| rotfish | 腐鱼 | Rotfish | foul 邪秽 | `ART_PROMPTS.rotfish` |
+| dayOctopus | 日间章鱼 | Day Octopus | fair 正品 | `ART_PROMPTS.dayOctopus` |
+| barracuda | 梭子鱼 | Barracuda | fair 正品 | `ART_PROMPTS.barracuda` |
+| whiptailStingray | 鞭尾魟鱼 | Whiptail Stingray | fair 正品 | `ART_PROMPTS.whiptailStingray` |
+| oarfish | 皇带鱼 | Oarfish | fair 正品 | `ART_PROMPTS.oarfish` |
+| mermaid | 美人鱼 | Mermaid | foul 邪秽 | `ART_PROMPTS.mermaid` |
+| snowEel | 雪鳗 | Snow Eel | fair 正品 | `ART_PROMPTS.snowEel` |
+| manOWar | 僧帽水母 | Man o' War | fair 正品 | `ART_PROMPTS.manOWar` |
+| lionfish | 狮子鱼 | Lionfish | fair 正品 | `ART_PROMPTS.lionfish` |
+| sealMan | 海豹人 | Seal Man | foul 邪秽 | `ART_PROMPTS.sealMan` |
+| banshee | 女妖 | Banshee | foul 邪秽 | `ART_PROMPTS.banshee` |
+| everSquid | 永动鱿鱼 | Ever-Squid | foul 邪秽 | `ART_PROMPTS.everSquid` |
+| giantOctopus | 巨型章鱼 | Giant Octopus | fair 正品 | `ART_PROMPTS.giantOctopus` |
+| swordfish | 旗鱼 | Swordfish | fair 正品 | `ART_PROMPTS.swordfish` |
+| giantSquid | 巨型乌贼 | Giant Squid | fair 正品 | `ART_PROMPTS.giantSquid` |
+| greatWhite | 大白鲨 | Great White Shark | fair 正品 | `ART_PROMPTS.greatWhite` |
+| elderThing | 旧日支配者 | Elder Thing | foul 邪秽 | `ART_PROMPTS.elderThing` |
+| kelpie | 凯尔派 | Kelpie | foul 邪秽 | `ART_PROMPTS.kelpie` |
+| kraken | 挪威海怪 | Norwegian Kraken | foul 邪秽 | `ART_PROMPTS.kraken` |
+| （卡背） | 卡背插画 | Card Back | — | `CARD_BACK_PROMPT`（CSS 矢量绘制，无需位图） |
 
-- 运行时通过 `getArtUrl(artKey)` 生成图片 URL，无需本地文件，因此 `assets/` 目录当前为空。
-
-| 卡牌 id | 中文名 | 英文名 | 提示词 key |
-|---------|--------|--------|------------|
-| sardine | 沙丁鱼 | Sardine | `ART_PROMPTS.sardine` |
-| clownfish | 小丑鱼 | Clownfish | `ART_PROMPTS.clownfish` |
-| pufferfish | 河豚 | Pufferfish | `ART_PROMPTS.pufferfish` |
-| lanternfish | 灯笼鱼 | Lanternfish | `ART_PROMPTS.lanternfish` |
-| jellyfish | 水母 | Jellyfish | `ART_PROMPTS.jellyfish` |
-| foot | 怪脚 | The Nasty Foot | `ART_PROMPTS.foot` |
-| dayOctopus | 昼章鱼 | Day Octopus | `ART_PROMPTS.dayOctopus` |
-| stingray | 魟鱼 | Whiptail Stingray | `ART_PROMPTS.stingray` |
-| lamprey | 七鳃鳗 | Lamprey | `ART_PROMPTS.lamprey` |
-| barracuda | 梭鱼 | Barracuda | `ART_PROMPTS.barracuda` |
-| morayEel | 海鳗 | Moray Eel | `ART_PROMPTS.morayEel` |
-| eyeBlob | 眼球怪 | Eye Blob | `ART_PROMPTS.eyeBlob` |
-| mermaid | 美人鱼 | Mermaid | `ART_PROMPTS.mermaid` |
-| giantOctopus | 巨型章鱼 | Giant Octopus | `ART_PROMPTS.giantOctopus` |
-| oarfish | 皇带鱼 | Oarfish | `ART_PROMPTS.oarfish` |
-| eversquid | 永恒乌贼 | Eversquid | `ART_PROMPTS.eversquid` |
-| kelpie | 凯尔派 | Kelpie | `ART_PROMPTS.kelpie` |
-| kraken | 克拉肯 | Kraken | `ART_PROMPTS.kraken` |
-| （卡背） | 卡背插画 | Card Back | `CARD_BACK_PROMPT` |
+> 历史旧卡（sardine/clownfish/pufferfish/lanternfish/jellyfish/morayEel/foot/eyeBlob/stingray/eversquid 等）已被 24 卡集取代并删除，不再存在于游戏内。
 
 ## 二、非核心美术（CC0 / CC-BY，按需引入）
 

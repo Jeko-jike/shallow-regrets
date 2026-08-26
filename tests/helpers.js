@@ -16,5 +16,5 @@ export function makeState(overrides = {}) {
 
 /** 构造一个指定钓获/横置的玩家对象 */
 export function makePlayer(id, name, caught = [], exhausted = [], immune = false) {
-  return { id, name, caught: [...caught], exhausted: [...exhausted], immune };
+  return { id, name, caught: [...caught], exhausted: [...exhausted], immune, powerBonus: 0, snowGuard: false };
 }

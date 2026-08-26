@@ -1,13 +1,14 @@
 /**
  * 状态机：状态枚举 / 转移表 / 动作分发。
- * 纯函数 applyAction(state, action) → { state, events } | { error }，
- * 同一状态 + 同一动作序列必然得到同一结果（确定性），
- * 因此可被单机、联机服务端（权威）、回放与测试复用。
+ * 纯函数 applyAction(state, action) → { state, events } | { error }。
+ * 同状态 + 同动作序列 ⇒ 同结果（确定性），可被单机、联机(权威)、回放与测试复用。
  *
- * 回合流程：ability（能力阶段）→ draw（抽牌）→ catch（钓走/放生）→ 下一位玩家。
+ * 回合流程：ability（能力阶段，可逐个发动主动牌）→ draw（抽牌）→ catch（钓走/放生）→ 下一位玩家。
+ * 反应窗口：能力阶段中"以他人之鱼为目标"会进入 pending（REDIRECT/COUNTER），
+ *           以及眼球团(REARRANGE)、腐鱼(PASS_LEFT)的待决策窗口，由 RESOLVE 收束。
  */
 import { CARD_BY_ID } from './cards.js';
-import { cloneState, getHooks } from './gameState.js';
+import { cloneState, getPower } from './gameState.js';
 import {
   canCatch,
   getCatchableDrawn,
@@ -16,7 +17,16 @@ import {
   getRequiredDrawCount,
   checkGameOver,
 } from './rules.js';
-import { applyAbilityEffect, validateAbilityTarget, createAbilityRng } from './abilities.js';
+import {
+  ABILITIES,
+  ABILITY_TYPES,
+  validateActiveUse,
+  validateAbilityTarget,
+  applyUnboundedAbility,
+  beginTargetedEffect,
+  resolvePending,
+  createAbilityRng,
+} from './abilities.js';
 import { getWinners } from './scoring.js';
 
 export const ACTION = {
@@ -25,33 +35,48 @@ export const ACTION = {
   DRAW: 'DRAW',
   CATCH: 'CATCH',
   THROW_BACK: 'THROW_BACK',
+  RESOLVE: 'RESOLVE',
 };
 
 export const PHASE = {
   ABILITY: 'ability',
   DRAW: 'draw',
   CATCH: 'catch',
+  PENDING: 'pending',
   GAME_OVER: 'gameOver',
 };
 
-/**
- * 校验动作合法性。
- * @returns {string|null} 错误信息，null 表示合法
- */
+/** 以他人之鱼为目标的主动能力（进入目标/反击链路） */
+const OPP_TARGETED_SET = new Set([
+  ABILITY_TYPES.EXHAUST_FOUL,
+  ABILITY_TYPES.EXHAUST_FAIR,
+  ABILITY_TYPES.EXHAUST_ANY,
+  ABILITY_TYPES.SWAP_ANY,
+  ABILITY_TYPES.SWAP_FAIR,
+  ABILITY_TYPES.SWAP_ZERO,
+]);
+
 export function validateAction(state, action) {
+  if (state.phase === PHASE.GAME_OVER) return '对局已结束';
+
+  // pending 窗口：只允许 RESOLVE
+  if (state.phase === PHASE.PENDING) {
+    if (action.type !== ACTION.RESOLVE) return '有待决策窗口，请先进行选择';
+    if (!state.pending) return '状态异常：无待决策窗口对象';
+    return null;
+  }
+
   const playerIndex = state.currentPlayer;
   const me = state.players[playerIndex];
-
-  if (state.phase === PHASE.GAME_OVER) return '对局已结束';
 
   switch (action.type) {
     case ACTION.USE_ABILITY: {
       if (state.phase !== PHASE.ABILITY) return '只能在回合开始的能力阶段发动能力';
       const card = CARD_BY_ID[action.cardId];
       if (!card) return '卡牌不存在';
-      if (!me.caught.includes(action.cardId)) return '你还没有钓到这条鱼';
-      if (me.exhausted.includes(action.cardId)) return '这条鱼的能力已使用过（已横置）';
-      if (!card.ability) return '这条鱼没有能力';
+      const err = validateActiveUse(state, playerIndex, action.cardId);
+      if (err) return err;
+      const meta = ABILITIES[card.ability];
       return validateAbilityTarget(state, playerIndex, card.ability, action.target);
     }
 
@@ -77,7 +102,7 @@ export function validateAction(state, action) {
       if (state.caughtThisTurn) return '本回合只能钓走一条鱼';
       if (!state.drawn.includes(action.cardId)) return '这张牌不在本回合抽出的牌中';
       if (!canCatch(state, playerIndex, action.cardId)) {
-        return `钩数不足：需要 ${CARD_BY_ID[action.cardId].strength}，当前 ${getHooks(state, playerIndex)}`;
+        return `无法钓走：需要难度 ${CARD_BY_ID[action.cardId].strength}，当前力量 ${getPower(state, playerIndex)}`;
       }
       return null;
     }
@@ -85,7 +110,6 @@ export function validateAction(state, action) {
     case ACTION.THROW_BACK: {
       if (state.phase !== PHASE.CATCH) return '当前不在放生阶段';
       if (!state.drawn.includes(action.cardId)) return '这张牌不在本回合抽出的牌中';
-      // 官方规则：能钓则必须钓走一条，之后才能放生
       if (!state.caughtThisTurn && getCatchableDrawn(state).length > 0) {
         return '有可钓走的鱼，必须先钓走一条';
       }
@@ -101,6 +125,8 @@ export function validateAction(state, action) {
 
 /** 回合结束：终局判定或轮到下一位玩家 */
 function endTurn(state, events) {
+  // 停滞保护：本回合是否钓到鱼（整轮无人钓获 → checkGameOver 兜底终局）
+  state.stagnation = state.caughtThisTurn ? 0 : state.stagnation + 1;
   if (checkGameOver(state)) {
     state.phase = PHASE.GAME_OVER;
     state.gameOver = true;
@@ -108,24 +134,26 @@ function endTurn(state, events) {
     events.push('game_over');
     return;
   }
+  // 清空刚结束回合玩家的力量加成、凯尔派揭示态
+  state.players[state.currentPlayer].powerBonus = 0;
+  state.revealedTops = null;
+
   state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
   if (state.currentPlayer === 0) state.turn += 1;
+  // 雪鳗护体：当再次轮到护体者时解除
+  if (state.snowGuardOwner != null && state.currentPlayer === state.snowGuardOwner) {
+    state.players[state.snowGuardOwner].snowGuard = false;
+    state.snowGuardOwner = null;
+  }
   state.phase = PHASE.ABILITY;
   state.drawn = [];
   state.drawnFrom = [];
   state.extraDraw = 0;
   state.caughtThisTurn = false;
   state.lastPeek = null;
-  for (const p of state.players) p.immune = false;
   events.push('turn_end');
 }
 
-/**
- * 应用一个动作到状态快照（不可变，返回新状态）。
- * @param {object} state 当前状态
- * @param {object} action 动作 {type, ...}
- * @returns {{state?:object, events?:string[], error?:string}}
- */
 export function applyAction(state, action) {
   const s = cloneState(state);
   const err = validateAction(s, action);
@@ -138,12 +166,26 @@ export function applyAction(state, action) {
   switch (action.type) {
     case ACTION.USE_ABILITY: {
       const card = CARD_BY_ID[action.cardId];
-      const { events: ev } = applyAbilityEffect(s, playerIndex, card.ability, action.target, {
-        rng: createAbilityRng(s),
-      });
-      events.push(...ev);
+      const abilityKey = card.ability;
+      let pending = null;
+      if (OPP_TARGETED_SET.has(abilityKey)) {
+        const r = beginTargetedEffect(s, playerIndex, abilityKey, action.target || {}, action.cardId);
+        pending = r.pending;
+        events.push('ability_used');
+      } else {
+        const r = applyUnboundedAbility(
+          s, playerIndex, abilityKey, action.target || {},
+          { rng: createAbilityRng(s) }, action.cardId,
+        );
+        events.push(...r.events);
+        pending = r.pending;
+        if (!pending) events.push('ability_used');
+      }
       me.exhausted.push(action.cardId);
-      events.push('ability_used');
+      if (pending) {
+        s.pending = pending;
+        s.phase = PHASE.PENDING;
+      }
       break;
     }
 
@@ -152,7 +194,7 @@ export function applyAction(state, action) {
       events.push('phase_draw');
       break;
 
-    case ACTION.DRAW: {
+    case ACTION.DRAW:
       for (const shoalIndex of action.from) {
         const cardId = s.shoals[shoalIndex].shift();
         s.drawn.push(cardId);
@@ -160,8 +202,9 @@ export function applyAction(state, action) {
       }
       s.phase = PHASE.CATCH;
       events.push('draw');
+      // 一张都没抽到（浅滩已被梭子鱼等移空）→ 本回合无牌可处理，直接收束回合
+      if (s.drawn.length === 0) endTurn(s, events);
       break;
-    }
 
     case ACTION.CATCH: {
       const idx = s.drawn.indexOf(action.cardId);
@@ -181,6 +224,18 @@ export function applyAction(state, action) {
       s.shoals[action.shoalIndex].unshift(action.cardId);
       events.push('throw_back');
       if (s.drawn.length === 0) endTurn(s, events);
+      break;
+    }
+
+    case ACTION.RESOLVE: {
+      const r = resolvePending(s, action.resolution || {});
+      events.push(...r.events);
+      if (r.pending) {
+        s.pending = r.pending;
+      } else {
+        s.pending = null;
+        s.phase = PHASE.ABILITY;
+      }
       break;
     }
   }

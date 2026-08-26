@@ -4,9 +4,11 @@
  *
  * 决策优先级（提示词四.7）：
  *   能否满足钩数 → 优先高分且非污秽 → 评估污秽风险 → 抢关键能力鱼。
+ * PENDING（反应窗口）用 constantjs/core/abilities 的确定性自动结算，保证不卡死。
  */
 import { CARD_BY_ID } from '../core/cards.js';
-import { getHooks } from '../core/gameState.js';
+import { getHooks, passiveActive } from '../core/gameState.js';
+import { autoResolution } from '../core/abilities.js';
 import {
   canCatch,
   getCatchableDrawn,
@@ -17,13 +19,29 @@ import {
 
 /** 能力对 AI 的额外价值（"抢关键能力鱼"的量化） */
 const ABILITY_BONUS = {
-  draw_extra: 2,
-  swap_fish: 2,
-  force_exhaust: 1.5,
-  immunity: 1.5,
-  peek_shoal: 1,
-  shuffle_shoals: 1,
+  draw_plus2: 2,
+  draw_plus1: 1,
+  power_plus3: 1.5,
+  exhaust_any: 1.5,
+  exhaust_foul: 1.2,
+  exhaust_fair: 1.2,
+  swap_any: 2,
+  swap_fair: 1.5,
+  swap_zero: 1.5,
+  give_card: 1.2,
+  pass_left: 1.5,
+  remove_zero: 1.2,
+  rearrange_shoal: 1,
+  peek_multi: 1.2,
+  shuffle_all: 1,
+  snow_guard: 1.5,
+  reveal_all: 0.8,
 };
+
+/** 目标玩家（除自己外，优先下一位仍存活/在座的玩家） */
+function others(state, p) {
+  return state.players.map((_, i) => i).filter((i) => i !== p);
+}
 
 /**
  * AI 对一张卡的价值评估：分值 - 污秽风险 + 能力价值。
@@ -45,6 +63,8 @@ export function chooseAction(state) {
       return chooseDrawAction(state);
     case 'catch':
       return chooseCatchAction(state);
+    case 'pending':
+      return { type: 'RESOLVE', resolution: autoResolution(state) };
     default:
       return null;
   }
@@ -54,67 +74,135 @@ export function chooseAction(state) {
 function chooseAbilityAction(state) {
   const p = state.currentPlayer;
   const me = state.players[p];
-  const opp = state.players[(p + 1) % state.players.length];
   const ready = me.caught.filter((id) => !me.exhausted.includes(id) && CARD_BY_ID[id].ability);
 
   for (const cardId of ready) {
-    const action = buildAbilityAction(state, CARD_BY_ID[cardId], opp);
+    const action = buildAbilityAction(state, cardId);
     if (action) return action;
   }
   return { type: 'PASS_ABILITIES' };
 }
 
-function buildAbilityAction(state, card, opp) {
+function isFrozen(state, idx) {
+  return state.players[idx].snowGuard;
+}
+
+/**
+ * 为一张能力鱼构建可发动动作；不可行返回 null（跳过）。target 只对 3-4 人局显式给 playerIndex。
+ */
+function buildAbilityAction(state, cardId) {
+  const card = CARD_BY_ID[cardId];
   const p = state.currentPlayer;
   const me = state.players[p];
+  const opps = others(state, p);
+  const opp = state.players[(p + 1) % state.players.length];
+
   switch (card.ability) {
-    case 'draw_extra':
-      // 多抽一张总是有利（更多选择）
-      return { type: 'USE_ABILITY', cardId: card.id };
+    case 'draw_plus2':
+    case 'draw_plus1':
+    case 'power_plus3':
+    case 'pass_left':
+    case 'shuffle_all':
+      return { type: 'USE_ABILITY', cardId };
 
-    case 'peek_shoal': {
-      const nonEmpty = getDrawableShoals(state);
-      if (nonEmpty.length === 0) return null;
-      return { type: 'USE_ABILITY', cardId: card.id, target: { shoalIndex: nonEmpty[0] } };
-    }
+    case 'reveal_all':
+      // 知道顶牌便于决策
+      return { type: 'USE_ABILITY', cardId };
 
-    case 'force_exhaust':
-      // 横置对方仍有能力且未横置的鱼，废掉其能力
-      if (opp.immune) return null;
-      const target = opp.caught.find((id) => !opp.exhausted.includes(id) && CARD_BY_ID[id].ability);
-      if (target) return { type: 'USE_ABILITY', cardId: card.id, target: { cardId: target } };
-      return null;
-
-    case 'swap_fish': {
-      if (opp.immune) return null;
-      if (me.caught.length === 0 || opp.caught.length === 0) return null;
-      const myWorst = [...me.caught].sort(
-        (a, b) => aiCardValue(CARD_BY_ID[a], state, p) - aiCardValue(CARD_BY_ID[b], state, p)
-      )[0];
-      const oppBest = [...opp.caught].sort(
-        (a, b) => aiCardValue(CARD_BY_ID[b], state, p) - aiCardValue(CARD_BY_ID[a], state, p)
-      )[0];
-      if (aiCardValue(CARD_BY_ID[oppBest], state, p) > aiCardValue(CARD_BY_ID[myWorst], state, p)) {
-        return { type: 'USE_ABILITY', cardId: card.id, target: { ownCardId: myWorst, oppCardId: oppBest } };
+    case 'exhaust_foul':
+    case 'exhaust_fair':
+    case 'exhaust_any': {
+      const filter = card.ability === 'exhaust_foul' ? 'foul' : card.ability === 'exhaust_fair' ? 'fair' : null;
+      for (const oi of opps) {
+        if (isFrozen(state, oi)) continue;
+        const o = state.players[oi];
+        // 仅选满足类型过滤的目标；若该对手无匹配目标则跳过（避免选定被规则拒绝的牌造成死循环）
+        const good = o.caught.filter(
+          (id) =>
+            !o.exhausted.includes(id) &&
+            (!filter || CARD_BY_ID[id].type === filter) &&
+            CARD_BY_ID[id].ability !== 'untargetable',
+        );
+        if (good.length === 0) continue;
+        // 优先废掉对方仍可用的能力鱼，否则按钓获顺序横置一条
+        const priority = (id) => (CARD_BY_ID[id].ability ? -1 : o.caught.indexOf(id));
+        const target = good.sort((a, b) => priority(a) - priority(b))[0];
+        return { type: 'USE_ABILITY', cardId, target: { playerIndex: oi, cardId: target } };
       }
       return null;
     }
 
-    case 'shuffle_shoals': {
-      // 顶牌小阴影不足 3 时洗牌，改善抽牌前景
-      const smallTops = state.shoals.filter((s) => s.length > 0 && CARD_BY_ID[s[0]].strength <= 0).length;
-      if (smallTops < 3) return { type: 'USE_ABILITY', cardId: card.id };
+    case 'swap_any':
+    case 'swap_fair':
+    case 'swap_zero': {
+      const filter = card.ability === 'swap_fair' ? 'fair' : null;
+      const sFilter = card.ability === 'swap_zero' ? 0 : null;
+      // 交换以本卡换对方一鱼转手；排除不可被选定的巨型乌贼
+      const myValue = aiCardValue(card, state, p);
+      for (const oi of opps) {
+        if (isFrozen(state, oi)) continue;
+        const o = state.players[oi];
+        let pool;
+        if (passiveActive(state, oi, 'force_swap_lionfish')) {
+          // 对方有狮子鱼现行：规则强制交换必须选狮子鱼；但若狮子鱼不满足类型/难度过滤则此对手不可交换
+          pool = o.caught.filter((id) =>
+            id === 'lionfish' && !o.exhausted.includes(id) &&
+            (!filter || CARD_BY_ID[id].type === filter) &&
+            (sFilter == null || CARD_BY_ID[id].strength === sFilter));
+        } else {
+          pool = o.caught.filter((id) =>
+            !o.exhausted.includes(id) &&
+            CARD_BY_ID[id].ability !== 'untargetable' &&
+            (!filter || CARD_BY_ID[id].type === filter) &&
+            (sFilter == null || CARD_BY_ID[id].strength === sFilter));
+        }
+        const oppBest = pool
+          .sort((a, b) => aiCardValue(CARD_BY_ID[b], state, p) - aiCardValue(CARD_BY_ID[a], state, p))[0];
+        if (oppBest && aiCardValue(CARD_BY_ID[oppBest], state, p) > myValue) {
+          return { type: 'USE_ABILITY', cardId, target: { playerIndex: oi, oppCardId: oppBest } };
+        }
+      }
       return null;
     }
 
-    case 'immunity': {
-      // 对方有可用的交换/横置能力时开免疫自保
-      const threat = opp.caught.some(
-        (id) =>
-          !opp.exhausted.includes(id) &&
-          (CARD_BY_ID[id].ability === 'swap_fish' || CARD_BY_ID[id].ability === 'force_exhaust')
+    case 'give_card': {
+      // 断脚是负分污秽，尽早丢给下一位玩家
+      const oi = opps[0];
+      if (oi == null) return null;
+      return { type: 'USE_ABILITY', cardId, target: { playerIndex: oi } };
+    }
+
+    case 'peek_multi': {
+      const nonEmpty = getDrawableShoals(state);
+      if (nonEmpty.length === 0) return null;
+      return { type: 'USE_ABILITY', cardId, target: { shoalIndexes: nonEmpty.slice(0, 3) } };
+    }
+
+    case 'remove_zero': {
+      for (let i = 0; i < state.shoals.length; i++) {
+        if (state.shoals[i].length > 0 && CARD_BY_ID[state.shoals[i][0]].strength === 0) {
+          return { type: 'USE_ABILITY', cardId, target: { shoalIndex: i, cardIndex: 0 } };
+        }
+      }
+      return null;
+    }
+
+    case 'rearrange_shoal': {
+      const idx = getDrawableShoals(state)[0];
+      if (idx == null) return null;
+      return { type: 'USE_ABILITY', cardId, target: { shoalIndex: idx } };
+    }
+
+    case 'snow_guard': {
+      // 有交换/横置威胁时开护体
+      const threat = opps.some((oi) =>
+        state.players[oi].caught.some(
+          (id) =>
+            !state.players[oi].exhausted.includes(id) &&
+            ['swap_any', 'swap_fair', 'swap_zero', 'exhaust_any', 'exhaust_foul', 'exhaust_fair'].includes(CARD_BY_ID[id].ability),
+        ),
       );
-      if (threat) return { type: 'USE_ABILITY', cardId: card.id };
+      if (threat) return { type: 'USE_ABILITY', cardId };
       return null;
     }
 

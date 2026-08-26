@@ -3,7 +3,8 @@
  * 不写 UI；只负责：开局、动作校验/推进、状态快照广播、断线 AI 托管、回放保存。
  */
 import { createInitialState } from '../js/core/gameState.js';
-import { applyAction, PHASE } from '../js/core/stateMachine.js';
+import { applyAction, ACTION, PHASE } from '../js/core/stateMachine.js';
+import { autoResolution } from '../js/core/abilities.js';
 import { chooseAction } from '../js/ai/heuristicAI.js';
 import { toSnapshot, MSG } from '../js/net/protocol.js';
 import { logger } from '../js/utils/logger.js';
@@ -60,6 +61,7 @@ export class GameServer {
     }
     this.state = res.state;
     this.replay.actions.push({ player: playerIndex, turn: this.state.turn, action });
+    this.drainPending();
     this.handleEvents(res.events, playerId);
     this.broadcastState();
     if (this.state.phase === PHASE.GAME_OVER) {
@@ -68,6 +70,20 @@ export class GameServer {
       return;
     }
     this.maybeRunAI();
+  }
+
+  /**
+   * 联机权威端确定性自动消解所有反应窗口（REDIRECT/COUNTER/REARRANGE/PASS_LEFT）。
+   * 说明：联机暂不提供逐玩家反应抉择，统一走确定性结算以保证对局不卡死、回放可复现。
+   */
+  drainPending() {
+    let guard = 0;
+    while (this.state.phase === PHASE.PENDING && this.state.pending && guard++ < 30) {
+      const res = applyAction(this.state, { type: ACTION.RESOLVE, resolution: autoResolution(this.state) });
+      if (res.error) break;
+      this.state = res.state;
+      this.replay.actions.push({ player: -1, turn: this.state.turn, action: { type: 'RESOLVE_AUTO' } });
+    }
   }
 
   /** 处理状态机事件中的定向消息（如偷看结果只发给发动者） */

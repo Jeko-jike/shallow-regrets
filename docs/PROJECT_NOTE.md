@@ -18,12 +18,12 @@ shallow-regrets/
 ├── js/
 │   ├── main.js           # 前端入口：模式路由、对局控制器、联机会话、事件绑定
 │   ├── core/             # 纯逻辑层（禁止触碰 DOM，100% 可单测）
-│   │   ├── cards.js      # 18 张卡牌数据（唯一数据源；含 strength 所需钩数 与 hooks 提供钩数）
-│   │   ├── gameState.js  # 初始状态 / 不可变更新 / getHooks
-│   │   ├── stateMachine.js # 状态机：ACTION/PHASE 枚举、validateAction、applyAction
-│   │   ├── rules.js      # 取牌合法性 / 强度判定 / 放生 / 终局判定
-│   │   ├── abilities.js  # 六种能力效果纯函数表 + 目标校验 + 确定性随机
-│   │   └── scoring.js    # 终局计分与污秽惩罚
+│   │   ├── cards.js      # 24 张卡牌数据（唯一数据源；含 points/strength 所需钩数/hooks 提供钩数/type fair|foul/ability）
+│   │   ├── gameState.js  # 初始状态 / 不可变更新 / getHooks / getPower
+│   │   ├── stateMachine.js # 状态机：ACTION/PHASE 枚举、validateAction、applyAction、PENDING 反应窗口、停滞保护
+│   │   ├── rules.js      # 取牌合法性 / 强度判定 / 放生 / 终局判定 / 可接触鱼
+│   │   ├── abilities.js  # 能力引擎：主动(一次性)/静态被动/反应被动 + REDIRECT/COUNTER/REARRANGE/PASS_LEFT 反应窗口 + autoResolution
+│   │   └── scoring.js    # 终局计分（基础分 + 钓到最多污秽鱼的玩家 -2 罚分）
 │   ├── ai/
 │   │   ├── heuristicAI.js # 启发式 AI（M2/M4 共享，输入状态快照返回动作）
 │   │   └── aiDecision.js  # AI 决策理由生成（M4 战斗日志可观测依据）
@@ -50,7 +50,7 @@ shallow-regrets/
 │   │   ├── rng.js          # 可注入种子的随机数
 │   │   └── eventBus.js     # 事件总线（预留）
 │   └── data/
-│       └── artPrompts.js   # 18 张卡 AI 绘图提示词清单 + getArtUrl 本地相对路径
+│       └── artPrompts.js   # 24 张卡 AI 绘图提示词清单 + getArtUrl 本地相对路径
 ├── server/               # M3 联机服务端（Node.js）
 │   ├── server.js         # 入口：静态托管 + Socket.IO
 │   ├── room.js           # 房间管理（4 位房间码 / 准备 / 生命周期）
@@ -137,7 +137,25 @@ shallow-regrets/
    - 处置（已做）：`git rm -r --cached dist` 仅从索引移除、保留磁盘文件，提交后 `main` 对 `dist/` 完全忽略，构建产物改由 `gh-pages` 分支独家部署。
    - 约定：构建产物在源分支一律不跟踪；部署统一走 gh-pages worktree 流程；**改 .gitignore 不能清除已跟踪文件**，须先 `git rm --cached`。
 
+14. **卡图生成工具对已存在同名文件追加 (1) 后缀**
+   - 现象：目标是生成 `public/cards/lamprey.jpg`，但该旧图已存在，工具自动输出 `lamprey(1).jpg`，`(1)` 新图与原 `lamprey.jpg` 并存，正式引用仍是旧图。
+   - 解决：先生成全部新图到临时名（如 `(1)` 文件），最后统一 `Remove-Item` 旧图 → `Move-Item` 新图覆盖为正式 `{id}.jpg`；废弃的非 24 卡旧图彻底删除。
+   - 约定：**凡需批量替换同名资产，先收集所有新图再统一改名覆盖，避免出现 `(1)` 残留导致引用旧图**。
+
 ## 三、任务日志
+
+### 2026-08-26 · 卡牌全集重写为 24 张 + 能力系统重构 + 全量新卡图（0.8.0）
+- 数据层：`js/core/cards.js` 由 18 张重构为 **24 张**（`points` 积分 / `strength` 所需钩数 / `hooks` 提供钩数 / `type` fair|foul / `ability` 能力键），支持负分污秽鱼与 0-5 难度，`CARD_BY_ID` 索引 + `TOTAL_CARDS=24`。
+- 能力系统：`js/core/abilities.js` 重构为三类——
+  - **主动（一次性）**：整局仅一次，发动后横置（exhausted）：抽牌+1/+2、洗堆、偷看、横置对方、交换、送牌、移除难度0、传牌、揭示、改组浅滩等。
+  - **静态被动**（纯限制规则，横置则失效）：海猴禁钓难度0、旧日支配者限制高难度、巨型乌贼不可被横置、雪鳗免伤、女妖可改向、僧帽可反击、狮子鱼强制交换。
+  - **反应被动**：通过状态机 `PENDING` 阶段处理交互窗口 —— `REDIRECT`（女妖改向）/`COUNTER`（僧帽横置攻击方一条鱼）/`REARRANGE`（眼球团重排浅滩）/`PASS_LEFT`（腐鱼向左传递一圈）；`autoResolution` 供 AI/服务端自动消解避免死锁。
+- 状态机/规则：N 人轮转（2-4 人）、6 浅滩 × 4 牌、能力→抽牌→捕鱼→回合结束；新增**停滞保护**（连续整轮无人钓获即终局）解决"策略性不钓"死循环；DRAW 抽 0 张直接收束回合（梭子鱼移空浅滩兜底）。
+- 计分：终局 = 基础分之和；钓到**最多污秽鱼**的玩家额外 -2 分罚分。
+- 规则确认（作者拍板）：**断脚送牌 = 对方获得整卡**（含 type/hooks/points，`me.caught` 移除 → 目标 `caught` 推入）；**凯尔派揭示的浅滩顶牌回合结束后由玩家放回**（揭示仅翻面顶牌，牌仍在堆中，回合末 `revealedTops` 清空）。
+- 卡图：按 `artPrompts.js` 24 条提示词调用绘图工具全部重新生成，存 `public/cards/{id}.jpg`（每张数百 KB 的高清竖版新卡图，覆盖旧小图；废弃旧非 24 卡图如 sardine/jellyfish/pufferfish/morayEel 等已删除）。
+- 测试 158 例全绿（17 文件：core/ai/spectate/ui/defense），`npm run build` 通过、dist 完全内联可双击。
+- 踩坑：`GenerateImage` 对已存在同名卡图会自动追加 `(1)` 后缀 → 需先删旧图再生成，或生成后统一改名替换（见踩坑 #14）。
 
 ### 2026-08-28 · 批量维护：卡图/尺寸/开局/文本/卡面/详情/修复/移动端（0.7.0）
 - 卡图压缩：1920×1920 → 512×512 JPEG，全副约 1.2MB，加载显著加速；仍存 `public/cards/{id}.jpg`，构建复制到 `dist/cards/`。
@@ -235,6 +253,7 @@ shallow-regrets/
 4. ✅ 部署（v0.7.0）：`main`（源码）已推送，`gh-pages`（产物 + `cards/`）已更新至 `92a2b5d`、`main` 不再追踪 `dist/`（见踩坑 #13）；部署流程 = 源分支 build → `git worktree add $TEMP/xxx gh-pages` → 替换 `index.html` + `cards/` → 提交推送 → `git worktree remove --force`。
 5. ⏳ 待办提醒：`docs/ASSETS.md` 仍写 "assets/ 为空（当前 UI 纯 CSS）"，现卡图为 `public/cards/`，后续修档时请同步更正；卡图所有权 / 许可声明如需注明生成工具，请补到 ASSETS.md。
 6. ✅ 0.7.0 批量维护已合并并上线部署：卡图压缩 / 卡面全幅透明 / 尺寸 118px / 卡片详情 / 空浅滩放回 / 数字前置 / 移动端跳过按钮；135 测试全绿、build 通过；`card-size-preview.html` 为临时预览文件（含尺寸滑块），定稿后可从仓库移除或保留为工具。
+7. ✅ 0.8.0 卡牌全集重写为 24 张：`cards.js`/`abilities.js`/`rules.js`/`stateMachine.js`/`gameState.js`/`scoring.js` 全量重构（N 人 + 反应窗口 + 停滞保护 + 污秽罚分），24 张新卡图已生成到 `public/cards/`；158 测试全绿、build 通过。**待办提醒**：`docs/ASSETS.md` 与 `docs/CHANGELOG.md` 仍停在 18 张卡版本，下次修档需同步为 24 张；如需部署 0.8.0，走 gh-pages worktree 流程一并提交 `cards/` 目录。
 
 ## 五、关键决策记录（ADR 简版）
 

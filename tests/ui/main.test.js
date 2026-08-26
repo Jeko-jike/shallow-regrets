@@ -154,11 +154,11 @@ describe('render：回归——空浅滩可作为放回目标被点击', () => {
   it('空浅滩可点时会整堆高亮并可触发 onShoalClick（不卡死）', () => {
     const state = {
       shoals: [
-        ['sardine', 'clownfish', 'pufferfish'],
+        ['lamprey', 'barracuda', 'whiptailStingray'],
         [], // 空浅滩（唯一放回目标）
         ['kraken'],
-        ['jellyfish'],
-        ['lamprey', 'foot'],
+        ['rotfish'],
+        ['lamprey', 'oarfish'],
         [],
       ],
       turn: 1,
@@ -206,22 +206,22 @@ describe('卡背难度区间 difficultyRange（固定三段）', () => {
   });
 
   it('renderShoals：卡背文本 = 该浅滩位置真实卡的 difficultyRange（顶牌由真实卡决定其卡背）', () => {
-    const state = { shoals: [['kraken'], ['sardine'], []] };
+    const state = { shoals: [['kraken'], ['lamprey'], []] };
     const el = document.createElement('div');
     render.renderShoals(el, state, { shoalClickable: () => false }, {});
     const texts = Array.from(el.querySelectorAll('.shoal-stack .card-back .cb-range'))
       .map((n) => n.textContent);
-    // 克拉肯 strength=5 → "3-5"；沙丁鱼 strength=0 → "0"（绝非 "0-1"）
+    // 克拉肯 strength=5 → "3-5"；七鳃鳗 strength=0 → "0"（绝非 "0-1"）
     expect(texts).toEqual(['3-5', '0']);
     expect(render.difficultyRange(CARD_BY_ID.kraken.strength)).toBe('3-5');
-    expect(render.difficultyRange(CARD_BY_ID.sardine.strength)).toBe('0');
+    expect(render.difficultyRange(CARD_BY_ID.lamprey.strength)).toBe('0');
   });
 
   it('renderShoals 层序：视觉最上层的卡背 = shoal[0]（顶牌），而非栈底', () => {
-    // shoal = [沙丁鱼(0), 海鳗(2), 克拉肯(5)]
-    // 顶牌（会被抽到的）是沙丁鱼 → 视觉最上层应显示 "0"
+    // shoal = [七鳃鳗(0), 永动鱿鱼(2), 克拉肯(5)]
+    // 顶牌（会被抽到的）是七鳃鳗 → 视觉最上层应显示 "0"
     // 如果层序反了，最上层会是克拉肯 → 显示 "3-5"（即截图里的 bug）
-    const state = { shoals: [['sardine', 'morayEel', 'kraken']] };
+    const state = { shoals: [['lamprey', 'everSquid', 'kraken']] };
     const el = document.createElement('div');
     render.renderShoals(el, state, { shoalClickable: () => false }, {});
     const backs = Array.from(el.querySelectorAll('.shoal-stack .card-back'));
@@ -229,7 +229,7 @@ describe('卡背难度区间 difficultyRange（固定三段）', () => {
     // DOM 顺序即视觉叠放顺序：最后一个元素在最上层
     const topBack = backs[backs.length - 1];
     expect(topBack.querySelector('.cb-range').textContent).toBe('0');
-    // 再核对各层：第 1 个（最底）应是克拉肯(5) "3-5"，中间海鳗(2) "1-2"，最顶沙丁鱼(0) "0"
+    // 再核对各层：第 1 个（最底）应是克拉肯(5) "3-5"，中间永动鱿鱼(2) "1-2"，最顶七鳃鳗(0) "0"
     const badges = backs.map((b) => b.querySelector('.cb-range').textContent);
     expect(badges).toEqual(['3-5', '1-2', '0']);
   });

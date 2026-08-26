@@ -6,13 +6,13 @@ import { CARD_BY_ID } from '../core/cards.js';
 import { getHooks } from '../core/gameState.js';
 import { getResults, getWinners, getRawScore } from '../core/scoring.js';
 import { getArtUrl } from '../data/artPrompts.js';
-import { ABILITY_DESCRIPTIONS } from '../core/abilities.js';
+import { ABILITIES } from '../core/abilities.js';
 import { PHASE } from '../core/stateMachine.js';
 
 const artCache = new Map();
 
 function artUrl(card) {
-  if (!artCache.has(card.id)) artCache.set(card.id, getArtUrl(card.art));
+  if (!artCache.has(card.id)) artCache.set(card.id, getArtUrl(card.id));
   return artCache.get(card.id);
 }
 
@@ -92,7 +92,7 @@ export function buildCardFront(card, { size = '', selectable = false, selected =
   if (card.ability) {
     const ab = document.createElement('div');
     ab.className = 'cf-ability';
-    ab.textContent = ABILITY_DESCRIPTIONS[card.ability];
+    ab.textContent = ABILITIES[card.ability]?.desc || '';
     info.appendChild(ab);
   }
 
@@ -100,7 +100,7 @@ export function buildCardFront(card, { size = '', selectable = false, selected =
   return el;
 }
 
-const PHASE_NAMES = { ability: '能力阶段', draw: '抽牌阶段', catch: '钓走/放回', gameOver: '对局结束' };
+const PHASE_NAMES = { ability: '能力阶段', draw: '抽牌阶段', catch: '钓走/放回', pending: '待决策', gameOver: '对局结束' };
 
 export function renderTurnInfo(el, state) {
   el.textContent = `第 ${state.turn} 回合 · ${state.players[state.currentPlayer].name} · ${PHASE_NAMES[state.phase] || state.phase}`;
@@ -126,10 +126,10 @@ export function renderPlayersBar(el, state) {
     stats.appendChild(hooks);
     chip.appendChild(name);
     chip.appendChild(stats);
-    if (p.immune) {
+    if (p.snowGuard) {
       const imm = document.createElement('div');
       imm.className = 'p-foul';
-      imm.textContent = '🛡 免疫';
+      imm.textContent = '🛡 雪鳗护体';
       chip.appendChild(imm);
     }
     el.appendChild(chip);
@@ -145,7 +145,7 @@ export function renderShoals(el, state, ui, handlers) {
   state.shoals.forEach((shoal, i) => {
     const wrap = document.createElement('div');
     wrap.className = 'shoal' + (shoal.length === 0 ? ' empty' : '');
-    if (ui.throwTargets?.includes(i) || ui.peekTargets?.includes(i)) wrap.classList.add('highlight');
+    if (ui.throwTargets?.includes(i) || ui.peekTargets?.includes(i) || ui.aimShoals?.includes(i)) wrap.classList.add('highlight');
 
     const stack = document.createElement('div');
     stack.className = 'shoal-stack';
@@ -278,6 +278,8 @@ function renderDrawnContext(el, state, ui, handlers, spectate) {
   switch (state.phase) {
     case PHASE.ABILITY:
       add('跳过能力阶段 →', 'btn-ghost dc-skip', false, () => handlers.onPassAbilities?.());
+      if (ui.peekCanConfirm) add('确认查看', 'btn-primary', false, () => handlers.onConfirmPeek?.());
+      if (ui.aim?.mode === 'shoalPeek') add('取消查看', 'btn-ghost', false, () => handlers.onCancelAim?.());
       break;
     case PHASE.DRAW:
       add('确认抽牌', 'btn-primary', !ui.drawCanConfirm, () => handlers.onConfirmDraw?.());

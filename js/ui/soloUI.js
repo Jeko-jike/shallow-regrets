@@ -6,10 +6,10 @@
 import { SoloController } from '../solo/soloFlow.js';
 import { chooseScriptAction, SCRIPT_NAME, TARGETS } from '../solo/soloScript.js';
 import { CARD_BY_ID } from '../core/cards.js';
-import { ABILITY_DESCRIPTIONS } from '../core/abilities.js';
+import { ABILITIES } from '../core/abilities.js';
 import { PHASE } from '../core/stateMachine.js';
 import { canCatch } from '../core/rules.js';
-import { getDrawInteraction, getCatchInteraction, buildBoardUi } from './interaction.js';
+import { getDrawInteraction, getCatchInteraction, buildBoardUi, abilityAim } from './interaction.js';
 import { createBoardInteraction } from './boardInteraction.js';
 import { getArtUrl } from '../data/artPrompts.js';
 import * as render from './render.js';
@@ -33,7 +33,7 @@ let controller = null;
 let lastConfig = null;
 let scriptTimer = null;
 let interaction = null;
-let uiState = { selectedShoals: [], throwCardId: null, abilityCardId: null, swapStep: null, swapOwn: null };
+let uiState = { selectedShoals: [], throwCardId: null, abilityCardId: null, aimShoals: [], swapStep: null, swapOwn: null };
 
 export function isSolo() {
   return !!controller;
@@ -64,7 +64,7 @@ export function startSolo(config) {
   controller = new SoloController(config);
   controller.onUpdate = renderAll;
   controller.onGameOver = onGameOver;
-  uiState = { selectedShoals: [], throwCardId: null, abilityCardId: null, swapStep: null, swapOwn: null };
+  uiState = { selectedShoals: [], throwCardId: null, abilityCardId: null, aimShoals: [], swapStep: null, swapOwn: null };
   interaction = createBoardInteraction({
     getState: () => controller.state,
     getUi: () => uiState,
@@ -74,6 +74,8 @@ export function startSolo(config) {
         modal.showToast(err, 'error');
         return false;
       }
+      // 玩家动作若留下需要玩家消解的 pending 窗口，弹出反应弹窗
+      if (controller.state.phase === PHASE.PENDING) interaction.showPendingResolution();
       // 玩家动作若结束了玩家回合（如钓走/放回最后一张），立即调度脚本回合
       if (controller.isScriptTurn()) runScript();
       return true;
@@ -115,16 +117,22 @@ function getStatusText() {
   switch (s.phase) {
     case PHASE.ABILITY:
       if (ui.abilityCardId) {
-        const ability = CARD_BY_ID[ui.abilityCardId].ability;
-        if (ability === 'peek_shoal') return '点击一个浅滩偷看其顶牌';
-        if (ability === 'force_exhaust') return '点击对方的一条鱼强制横置';
-        if (ability === 'swap_fish') return ui.swapStep === 'own' ? '点击你要交换出去的一条鱼' : '点击对方的一条鱼进行交换';
+        const aim = abilityAim(s, ui);
+        if (aim?.mode === 'shoalPeek') return (ui.aimShoals?.length ?? 0) ? `已选 ${ui.aimShoals.length}/3 个，点击"确认查看"` : '点击 1-3 个浅滩查看其顶牌';
+        if (aim?.mode === 'shoalZero') return '点击一张难度 0 的鱼牌所在浅滩';
+        if (aim?.mode === 'shoal') return '点击要重排的鱼群';
+        if (aim?.mode === 'swapOwn') return '点击你要交换出去的一条鱼';
+        if (aim?.mode === 'swapOpp') return '点击对方的一条鱼进行交换';
+        if (aim?.mode === 'player') return '点击对方的一位玩家（把断脚交给他）';
+        if (aim?.mode === 'oppFish') return '点击对方的一条鱼';
       }
       return '可点击已钓的能力鱼发动能力，或跳过';
     case PHASE.DRAW:
       return getDrawInteraction(s, ui).hint;
     case PHASE.CATCH:
       return getCatchInteraction(s).hint;
+    case PHASE.PENDING:
+      return '待决策：请查看弹窗并选择';
     default:
       return '';
   }
@@ -145,7 +153,9 @@ function renderAll() {
     onConfirmDraw: interaction.onConfirmDraw,
     onClearDraw: interaction.onClearDraw,
     onCancelThrow: interaction.onCancelThrow,
-    onCardInfo: (cardId) => interaction.showCardDetail?.(cardId),
+    onConfirmPeek: interaction.onConfirmPeek,
+    onCancelAim: interaction.onCancelAim,
+    onCardInfo: (cardId) => interaction.showCardDetail(s.currentPlayer, cardId),
   });
   render.renderCaught($('playersCaught'), s, ui, { onFishClick: interaction.onFishClick });
   render.renderActionBar($('actionBar'), s, ui, {
@@ -167,7 +177,7 @@ function renderTargets() {
     mini.className = 'solo-target';
     mini.title = `${c.name}（${c.points} 分，需 ${c.strength} 钩）`;
     const img = document.createElement('img');
-    img.src = getArtUrl(c.art);
+    img.src = getArtUrl(c.id);
     img.alt = c.name;
     img.addEventListener('error', () => img.remove(), { once: true });
     mini.appendChild(img);
@@ -225,7 +235,7 @@ function describeScriptAction(action) {
   switch (action.type) {
     case 'USE_ABILITY': {
       const c = CARD_BY_ID[action.cardId];
-      return { desc: `发动「${c.name}」能力`, reason: ABILITY_DESCRIPTIONS[c.ability] || '固定顺序发动' };
+      return { desc: `发动「${c.name}」能力`, reason: ABILITIES[c.ability]?.desc || '固定顺序发动' };
     }
     case 'PASS_ABILITIES':
       return { desc: '跳过能力阶段', reason: '无可发动的能力鱼' };

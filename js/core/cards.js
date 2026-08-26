@@ -1,62 +1,58 @@
 /**
- * 18 张鱼卡定义 —— 全项目唯一数据源。
- * 字段：id(唯一键) / name(中文名) / nameEn(英文名) / points(分值) /
- *       strength(所需钩数 0-5，即"难度") / hooks(钓获后提供的钩数，用于满足更强鱼) /
- *       type(fair 正品 | foul 污秽) /
- *       ability(一次性能力类型，null 表示无能力) / art(卡图 key，对应 artPrompts.js)
+ * 24 张鱼卡定义 —— 全项目唯一数据源。
+ * 字段：
+ *   id        唯一键（也是卡图 key：public/cards/{id}.jpg）
+ *   name      中文名
+ *   nameEn    英文名
+ *   points    积分（可负：污秽惩罚之外的负分鱼）
+ *   strength  难度（所需钩数，0-5）
+ *   hooks     钓获后提供的钩数
+ *   type      fair 正品 | foul 邪秽
+ *   ability   能力键（null 表示无能力；见 js/core/abilities.js 的 ABILITIES 表）
  *
- * 卡名参考官方权威来源 thefamilygamers.com/shallow-regrets/ 与
- * Card Gamer / Button Shy 资料（Eversquid、Kelpie、Whiptail Stingray、Barracuda、
- * Giant Octopus、Oarfish、Lamprey、Moray Eel、Kraken、Foot、Day Octopus、
- * Mermaid、Eye Blob 等为真实卡名）；具体数值为平衡性设计。
- * 能力类型见 js/core/abilities.js。
+ * 能力频率（已与作者确认）：
+ *   active  一次性主动：整局仅一次，发动后横置（exhausted）
+ *   passive 永续被动：常驻起效；被横置（无论自用与否）后失效
+ *   能力阶段（每回合开始，该玩家钓到的未横置主动牌逐个发动）。
  *
- * 钩子机制（平衡性调整）：钓到鱼后，其 hooks 计入你的当前钩子数；
- * 仅分值 ≤ 3 的鱼提供钩数（小鱼/中型鱼各 1 钩），分值 > 3 的大鱼不提供钩数——
- * 大鱼为"终局渔获"，钩数只能靠小鱼逐步积累，避免滚雪球。
+ * 钩子机构：钓到鱼后其 hooks 计入你的钩池；捕鱼要求 当前钩数 ≥ 目标难度。
+ *   分值 > 3 的大鱼与部分中鱼不供钩（单卡钩子数显式给出，不沿用"分值>3不供钩"旧规则）。
  */
-
-/**
- * @typedef {Object} FishCard
- * @property {string} id
- * @property {string} name
- * @property {string} nameEn
- * @property {number} points
- * @property {number} strength
- * @property {number} hooks
- * @property {'fair'|'foul'} type
- * @property {string|null} ability
- * @property {string} art
- */
-
-/** @type {FishCard[]} */
 export const CARDS = [
-  // —— 小鱼（strength 0，开局易钓，钓获提供 1 钩）——
-  { id: 'sardine', name: '沙丁鱼', nameEn: 'Sardine', points: 1, strength: 0, hooks: 1, type: 'fair', ability: null, art: 'sardine' },
-  { id: 'clownfish', name: '小丑鱼', nameEn: 'Clownfish', points: 2, strength: 0, hooks: 1, type: 'fair', ability: null, art: 'clownfish' },
-  { id: 'pufferfish', name: '河豚', nameEn: 'Pufferfish', points: 2, strength: 0, hooks: 1, type: 'fair', ability: 'immunity', art: 'pufferfish' },
-  { id: 'lanternfish', name: '灯笼鱼', nameEn: 'Lanternfish', points: 2, strength: 0, hooks: 1, type: 'fair', ability: 'peek_shoal', art: 'lanternfish' },
-  { id: 'jellyfish', name: '水母', nameEn: 'Jellyfish', points: 1, strength: 0, hooks: 1, type: 'foul', ability: null, art: 'jellyfish' },
-  { id: 'foot', name: '怪脚', nameEn: 'The Nasty Foot', points: -1, strength: 0, hooks: 1, type: 'foul', ability: null, art: 'foot' },
+  // —— 小鱼（strength 0，开局易钓）——
+  { id: 'lamprey', name: '七鳃鳗', nameEn: 'Lamprey', points: 1, strength: 0, hooks: 1, type: 'fair', ability: 'draw_plus1' },
+  { id: 'seaBishop', name: '海主教', nameEn: 'Sea Bishop', points: 1, strength: 0, hooks: 1, type: 'foul', ability: 'shuffle_all' },
+  { id: 'seaMonkey', name: '海猴', nameEn: 'Sea Monkey', points: -2, strength: 0, hooks: 3, type: 'foul', ability: 'catch_restrict_zero' },
+  { id: 'severedFoot', name: '断脚', nameEn: 'Severed Foot', points: -1, strength: 0, hooks: 2, type: 'foul', ability: 'give_card' },
+  { id: 'eyeballBlob', name: '眼球团', nameEn: 'Eyeball Blob', points: 1, strength: 0, hooks: 1, type: 'foul', ability: 'rearrange_shoal' },
+  { id: 'rotfish', name: '腐鱼', nameEn: 'Rotfish', points: -1, strength: 0, hooks: 2, type: 'foul', ability: 'pass_left' },
+  { id: 'dayOctopus', name: '日间章鱼', nameEn: 'Day Octopus', points: 1, strength: 0, hooks: 0, type: 'fair', ability: 'swap_zero' },
+  { id: 'barracuda', name: '梭子鱼', nameEn: 'Barracuda', points: 0, strength: 0, hooks: 1, type: 'fair', ability: 'remove_zero' },
+  { id: 'whiptailStingray', name: '鞭尾魟鱼', nameEn: 'Whiptail Stingray', points: 0, strength: 0, hooks: 1, type: 'fair', ability: 'exhaust_any' },
 
-  // —— 中型鱼（strength 1-2；分值 ≤ 3 的提供 1 钩，分值 > 3 的不提供钩数）——
-  { id: 'dayOctopus', name: '昼章鱼', nameEn: 'Day Octopus', points: 3, strength: 1, hooks: 1, type: 'fair', ability: 'swap_fish', art: 'dayOctopus' },
-  { id: 'stingray', name: '魟鱼', nameEn: 'Whiptail Stingray', points: 3, strength: 1, hooks: 1, type: 'fair', ability: 'force_exhaust', art: 'stingray' },
-  { id: 'lamprey', name: '七鳃鳗', nameEn: 'Lamprey', points: 3, strength: 1, hooks: 1, type: 'fair', ability: 'draw_extra', art: 'lamprey' },
-  { id: 'barracuda', name: '梭鱼', nameEn: 'Barracuda', points: 4, strength: 2, hooks: 0, type: 'fair', ability: null, art: 'barracuda' },
-  { id: 'morayEel', name: '海鳗', nameEn: 'Moray Eel', points: 4, strength: 2, hooks: 0, type: 'fair', ability: 'immunity', art: 'morayEel' },
-  { id: 'eyeBlob', name: '眼球怪', nameEn: 'Eye Blob', points: 4, strength: 2, hooks: 0, type: 'foul', ability: 'peek_shoal', art: 'eyeBlob' },
-  { id: 'mermaid', name: '美人鱼', nameEn: 'Mermaid', points: 4, strength: 2, hooks: 0, type: 'foul', ability: 'force_exhaust', art: 'mermaid' },
-  { id: 'giantOctopus', name: '巨型章鱼', nameEn: 'Giant Octopus', points: 5, strength: 2, hooks: 0, type: 'fair', ability: 'swap_fish', art: 'giantOctopus' },
+  // —— 低中鱼（strength 1）——
+  { id: 'oarfish', name: '皇带鱼', nameEn: 'Oarfish', points: 2, strength: 1, hooks: 1, type: 'fair', ability: 'draw_plus2' },
+  { id: 'mermaid', name: '美人鱼', nameEn: 'Mermaid', points: 2, strength: 1, hooks: 1, type: 'foul', ability: 'peek_multi' },
+  { id: 'snowEel', name: '雪鳗', nameEn: 'Snow Eel', points: 2, strength: 1, hooks: 1, type: 'fair', ability: 'snow_guard' },
+  { id: 'manOWar', name: '僧帽水母', nameEn: "Man o' War", points: 0, strength: 1, hooks: 1, type: 'fair', ability: 'counter_exhaust' },
+  { id: 'lionfish', name: '狮子鱼', nameEn: 'Lionfish', points: 0, strength: 1, hooks: 1, type: 'fair', ability: 'force_swap_lionfish' },
 
-  // —— 大鱼（strength 3-5，需积累钩数；分值 > 3 不提供钩数，为终局渔获）——
-  { id: 'oarfish', name: '皇带鱼', nameEn: 'Oarfish', points: 6, strength: 3, hooks: 0, type: 'fair', ability: 'draw_extra', art: 'oarfish' },
-  { id: 'eversquid', name: '永恒乌贼', nameEn: 'Eversquid', points: 6, strength: 3, hooks: 0, type: 'foul', ability: 'draw_extra', art: 'eversquid' },
-  { id: 'kelpie', name: '凯尔派', nameEn: 'Kelpie', points: 7, strength: 4, hooks: 0, type: 'foul', ability: 'shuffle_shoals', art: 'kelpie' },
-  { id: 'kraken', name: '克拉肯', nameEn: 'Kraken', points: 8, strength: 5, hooks: 0, type: 'fair', ability: 'shuffle_shoals', art: 'kraken' },
+  // —— 中鱼（strength 2）——
+  { id: 'sealMan', name: '海豹人', nameEn: 'Seal Man', points: 3, strength: 2, hooks: 1, type: 'foul', ability: 'swap_any' },
+  { id: 'banshee', name: '女妖', nameEn: 'Banshee', points: 3, strength: 2, hooks: 1, type: 'foul', ability: 'redirect_target' },
+  { id: 'everSquid', name: '永动鱿鱼', nameEn: 'Ever-Squid', points: 2, strength: 2, hooks: 0, type: 'foul', ability: 'exhaust_fair' },
+  { id: 'giantOctopus', name: '巨型章鱼', nameEn: 'Giant Octopus', points: 2, strength: 2, hooks: 1, type: 'fair', ability: 'swap_fair' },
+
+  // —— 大鱼（strength 3-5）——
+  { id: 'swordfish', name: '旗鱼', nameEn: 'Swordfish', points: 3, strength: 3, hooks: 0, type: 'fair', ability: 'exhaust_foul' },
+  { id: 'giantSquid', name: '巨型乌贼', nameEn: 'Giant Squid', points: 3, strength: 3, hooks: 0, type: 'fair', ability: 'untargetable' },
+  { id: 'greatWhite', name: '大白鲨', nameEn: 'Great White Shark', points: 3, strength: 3, hooks: 0, type: 'fair', ability: 'power_plus3' },
+  { id: 'elderThing', name: '旧日支配者', nameEn: 'Elder Thing', points: 5, strength: 4, hooks: 0, type: 'foul', ability: 'catch_restrict_high' },
+  { id: 'kelpie', name: '凯尔派', nameEn: 'Kelpie', points: 4, strength: 4, hooks: 0, type: 'foul', ability: 'reveal_all' },
+  { id: 'kraken', name: '挪威海怪', nameEn: 'Norwegian Kraken', points: 5, strength: 5, hooks: 0, type: 'foul', ability: null },
 ];
 
 /** id → 卡牌 的索引，便于 O(1) 查找 */
 export const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c]));
 
-export const TOTAL_CARDS = CARDS.length; // 18
+export const TOTAL_CARDS = CARDS.length; // 24

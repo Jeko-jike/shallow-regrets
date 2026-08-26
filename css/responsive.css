@@ -31,8 +31,9 @@
   }
 
   .home-title h1 {
-    font-size: 32px;
-    letter-spacing: 4px;
+    font-size: 34px;
+    letter-spacing: 7px;
+    text-indent: 7px;
   }
 }
 
@@ -69,6 +70,25 @@
     padding: 8px 14px;
     font-size: 14px;
   }
+
+  /* 小屏收起大标题符文引线，避免溢出 */
+  .home-title::before,
+  .home-title::after {
+    letter-spacing: 6px;
+    font-size: 9px;
+  }
+
+  .mode-card::after,
+  .drawn-area::before,
+  .result-card::after {
+    display: none;
+  }
+
+  /* 触屏 / 小屏关闭触手剪影避免遮挡 */
+  .cthulhu-bg .cb-tentacles {
+    height: 140px;
+    opacity: 0.35;
+  }
 }
 
 /* 触屏降级：拖拽不可用时点击选择（默认即点击交互，无需额外处理） */
@@ -76,5 +96,16 @@
   .card-front.selectable:hover,
   .card-back.selectable:hover {
     transform: none;
+  }
+}
+
+/* 系统"减少动态效果"偏好：关闭氛围层漂移 */
+@media (prefers-reduced-motion: reduce) {
+  .cthulhu-bg .cb-blob,
+  .cthulhu-bg .cb-stars,
+  .flip-in,
+  .card-move,
+  .shake {
+    animation: none !important;
   }
 }

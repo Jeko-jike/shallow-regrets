@@ -144,6 +144,24 @@ shallow-regrets/
 
 ## 三、任务日志
 
+### 2026-08-26 · 前端克苏鲁化改造（大胆克苏鲁 · 纯 CSS + 内联 SVG）
+- 视觉方向（作者确认）：**大胆克苏鲁** + **磷光荧光绿**主强调色；**纯 CSS + 内联 SVG 实现**（零外链、可离线双击、无版权风险）。
+- 设计变量（`base.css` `:root`）：深渊黑 `--bg-deep:#01070a`、磷光绿 `--accent:#86f2ac`/`--accent-strong:#34d399`、古卷朽金 `--gold:#e4c678`、腐化毒橙 `--foul:#ff5b3d`；新增 `--parchment/--blood/--rune-dim/--rune-faint` 与字体变量 `--font-display`(Palatino/Book Antiqua/Georgia+宋体)/`--font-rune`(Runic 符文)。
+- 全局氛围：`body` 双 radial 深渊渐变 + 暗角 vignette(`body::before`, z45 覆盖内容层但低于弹窗) + SVG feTurbulence 雾气噪点(`body::after`, overlay 0.05)；`index.html` 新增 `.cthulhu-bg` 氛围层（3 个荧光光斑漂移 + 星点流动 + 底部触手剪影 SVG），均 `pointer-events:none` 纯装饰。
+- 首页：标题改 `--font-display` 古卷金分层辉光、上下加古神符文引线（`ᚱᚨᛁᚦ` 等 Runic）；模式卡加符文角饰与 `✦` 尖角符、hover 磷光描边；小屏自动收起符文引线。
+- 卡背：`⚓` 锚改为 **星芒圆环圣徽**（内联 SVG data-URI：太阳十字 5 角星 + 双圆环 + 射线）+ 外圈符文铭刻；卡面信息区加"羊皮纸蚀痕"顶线 + 底部暗蚀薄膜渐变保证文字可读；横置卡磷光熄灭。
+- 状态高亮全面换磷光绿：`.selectable/.selected/.legal-target/.highlight/.setup-seg/.seg-btn.active`；`.drawn-area/.side-panel` 改祭坛石板质感 + 符文角标；`.panel-title/.modal` 前/后挂符文分隔；`.modal` 底部暗刻符文、标题古卷金。
+- 动效与降级：光斑 `cbHover`、星点 `cbStars` 漂移；`no-anim`(body 类) 与 `prefers-reduced-motion:reduce` 双重关闭动画。
+- 无 JS 改动（仅样式 + index.html 氛围层装饰），23/13 css 全量重写，**163 测试全绿、`npm run build` 通过、dist 完全内联（无外链、含 cthulhu-bg 触手 SVG 与圣徽）**。
+- 约定补充：克苏鲁化装饰层全部走 CSS/data-URI，永不可用外链字体/图片，否则破坏单机离线双击；氛围层容器必须 `pointer-events:none` 且 z-index 低于弹窗(toast z200/modal z100/遮挡 z50)，暗角 noise 放 z45 位于内容之上。
+
+### 2026-08-26 · 修复 dist/index.html 双击打不开（inline-build 内联破坏）
+- 现象：`npm run build` 后 `dist/index.html` 双击打开白屏/无响应。
+- 根因：`tools/inline-build.mjs` 用 `String.prototype.replace(正则, 替换串)` 内联 JS，而压缩后的 bundle 里含 `$&`（局部变量被压缩成 `$` 后紧跟 `&&`）。`replace` 的替换串中 `$&` 是特殊模式（= 匹配到的子串），于是被替换成原始外链脚本标签 `<script type="module" crossorigin src="./assets/xxx.js"></script>` 直接嵌进 JS 代码里；浏览器解析 HTML 遇到这个 `</script>` 提前截断内联脚本 → 全部 JS 失效。
+- 解决：`replace` 第二参改为**替换函数** `() => \`<script type="module">${js}</script>\``（CSS 同理），彻底避开 `$&`/`$'`/`$\``/`$$` 等特殊模式。
+- 回归：重建后 `dist/index.html` 无外链引用、无内嵌 script 标签，提取内联脚本 `node --check` 语法通过；文件由 7.8KB 增至 ~151KB（JS+CSS 已内联）。
+- 约定：**凡把任意文本内联进 HTML 的脚本，一律用替换函数而非替换串**，防止 `$` 模式破坏内容。
+
 ### 2026-08-26 · 卡牌全集重写为 24 张 + 能力系统重构 + 全量新卡图（0.8.0）
 - 数据层：`js/core/cards.js` 由 18 张重构为 **24 张**（`points` 积分 / `strength` 所需钩数 / `hooks` 提供钩数 / `type` fair|foul / `ability` 能力键），支持负分污秽鱼与 0-5 难度，`CARD_BY_ID` 索引 + `TOTAL_CARDS=24`。
 - 能力系统：`js/core/abilities.js` 重构为三类——

@@ -19,7 +19,9 @@ for (const f of readdirSync(assetsDir).filter((x) => x.endsWith('.css'))) {
   const css = readFileSync(join(assetsDir, f), 'utf-8');
   const linkRe = new RegExp(`<link[^>]*href="\\./assets/${f}"[^>]*>`);
   if (!linkRe.test(html)) throw new Error(`未找到 CSS 引用: ${f}`);
-  html = html.replace(linkRe, `<style>${css}</style>`);
+  // 必须用替换函数：替换串里的 $& / $' / $` 等会被 String.replace 当特殊模式处理，
+  // 而压缩后的 JS/CSS 里可能恰好含 "$&"（如变量 $ 后跟 &&），导致内联内容被破坏。
+  html = html.replace(linkRe, () => `<style>${css}</style>`);
 }
 
 // 内联 JS：<script type="module" ... src="./assets/xxx.js"></script>
@@ -27,7 +29,7 @@ for (const f of readdirSync(assetsDir).filter((x) => x.endsWith('.js'))) {
   const js = readFileSync(join(assetsDir, f), 'utf-8');
   const scriptRe = new RegExp(`<script[^>]*src="\\./assets/${f}"[^>]*></script>`);
   if (!scriptRe.test(html)) throw new Error(`未找到 JS 引用: ${f}`);
-  html = html.replace(scriptRe, `<script type="module">${js}</script>`);
+  html = html.replace(scriptRe, () => `<script type="module">${js}</script>`);
 }
 
 writeFileSync(htmlPath, html);

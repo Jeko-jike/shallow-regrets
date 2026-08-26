@@ -1,15 +1,15 @@
-/* ===== 弹窗：规则说明 / 确认框 / 错误提示 ===== */
+/* ===== 弹窗：规则说明 / 确认框 / 错误提示（克苏鲁化） ===== */
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 12, 22, 0.7);
+  background: rgba(1, 8, 7, 0.72);
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 100;
   padding: 20px;
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(4px);
 }
 
 .modal-overlay.active {
@@ -17,7 +17,8 @@
 }
 
 .modal {
-  background: linear-gradient(170deg, #12304f, #0a1c33);
+  background:
+    linear-gradient(170deg, #0b2b20 0%, #061a13 60%, #04100c 100%);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   max-width: 560px;
@@ -25,7 +26,22 @@
   max-height: 82vh;
   overflow-y: auto;
   padding: 22px 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(52, 211, 153, 0.06);
+  position: relative;
+}
+
+/* 弹窗底部暗刻符文 */
+.modal::after {
+  content: 'ᛝ ᛉ ᛟ ᚱ ᛞ ᛁ';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  font-family: var(--font-rune);
+  font-size: 11px;
+  letter-spacing: 8px;
+  color: var(--rune-faint);
+  pointer-events: none;
 }
 
 .modal .modal-head {
@@ -33,12 +49,17 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
+  padding-bottom: 10px;
 }
 
 .modal .modal-title {
   font-size: 20px;
   font-weight: 800;
-  letter-spacing: 1px;
+  font-family: var(--font-display);
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(228, 198, 120, 0.18);
 }
 
 .modal .modal-close {
@@ -61,6 +82,13 @@
   color: var(--accent);
   margin: 12px 0 6px;
   font-size: 15px;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+
+.modal .modal-body h4::before {
+  content: '✦ ';
+  font-size: 12px;
 }
 
 .modal .modal-body ul {
@@ -76,6 +104,7 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 18px;
+  padding-top: 2px;
 }
 
 /* 轻提示（错误/成功） */
@@ -84,7 +113,7 @@
   top: 20px;
   left: 50%;
   transform: translateX(-50%) translateY(-20px);
-  background: rgba(8, 18, 32, 0.95);
+  background: rgba(3, 15, 11, 0.95);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 18px;
@@ -96,6 +125,7 @@
   pointer-events: none;
   max-width: 80vw;
   text-align: center;
+  box-shadow: 0 0 22px rgba(0, 0, 0, 0.5);
 }
 
 .toast.show {
@@ -104,12 +134,12 @@
 }
 
 .toast.error {
-  border-color: var(--danger);
+  border-color: rgba(239, 109, 109, 0.6);
   color: var(--danger);
 }
 
 .toast.success {
-  border-color: var(--accent);
+  border-color: rgba(52, 211, 153, 0.6);
   color: var(--accent);
 }
 
@@ -129,16 +159,18 @@
 .setup-field input:not([type]) {
   width: 100%;
   padding: 9px 12px;
-  border-radius: 8px;
+  border-radius: 7px;
   border: 1px solid var(--line);
   background: var(--bg-deep);
   color: var(--text);
   font-size: 15px;
   outline: none;
+  transition: border-color var(--anim-fast), box-shadow var(--anim-fast);
 }
 
 .setup-field input:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.18);
 }
 
 .setup-field .check {
@@ -163,7 +195,7 @@
 .setup-seg .seg-btn {
   flex: 1;
   padding: 9px 0;
-  border-radius: 8px;
+  border-radius: 7px;
   border: 1px solid var(--line);
   background: var(--bg-deep);
   color: var(--text-dim);
@@ -175,7 +207,8 @@
 .setup-seg .seg-btn.active {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(45, 212, 191, 0.1);
+  background: rgba(52, 211, 153, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(134, 242, 172, 0.25);
 }
 
 .setup-hint {
@@ -197,7 +230,7 @@
   overflow: hidden;
   border: 2px solid var(--line);
   aspect-ratio: 2 / 3;
-  background: linear-gradient(160deg, #12304f, #0a1c33);
+  background: linear-gradient(160deg, #0b2b20, #04100c);
 }
 
 .card-detail .cd-art img {
@@ -216,12 +249,17 @@
 .card-detail .cd-name {
   font-size: 22px;
   font-weight: 800;
+  font-family: var(--font-display);
+  letter-spacing: 2px;
+  color: var(--gold);
 }
 
 .card-detail .cd-en {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-dim);
+  font-family: var(--font-display);
+  letter-spacing: 1px;
 }
 
 .card-detail .cd-tags {
@@ -235,15 +273,15 @@
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 20px;
-  background: rgba(45, 212, 191, 0.1);
-  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
   color: var(--accent);
 }
 
 .card-detail .cd-tag.foul {
-  background: rgba(194, 65, 12, 0.14);
-  border-color: rgba(194, 65, 12, 0.45);
-  color: #fba174;
+  background: rgba(255, 91, 61, 0.12);
+  border-color: rgba(255, 91, 61, 0.45);
+  color: #ffab8f;
 }
 
 .card-detail .cd-ability {

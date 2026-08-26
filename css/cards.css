@@ -1,28 +1,43 @@
-/* ===== 卡牌样式：卡背 / 卡面 / 横置 / 选中态 ===== */
+/* ===== 卡牌样式：卡背 / 卡面 / 横置 / 选中态（克苏鲁化） ===== */
 
-/* 卡背（面朝下） */
+/* 卡背（面朝下）：深渊薄膜 + 太阳十字圣徽 */
 .card-back {
   width: var(--card-w);
   height: var(--card-h);
   border-radius: var(--radius);
   background:
-    radial-gradient(circle at 50% 42%, rgba(45, 212, 191, 0.18), transparent 40%),
-    repeating-linear-gradient(45deg, #0e2a45 0 8px, #0a1f36 8px 16px);
-  border: 2px solid #1c3f63;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 0 0 3px rgba(28, 63, 99, 0.4);
+    radial-gradient(circle at 50% 42%, rgba(52, 211, 153, 0.14), transparent 42%),
+    repeating-radial-gradient(circle at 50% 45%, rgba(10, 40, 30, 0.0) 0 6px, rgba(20, 90, 60, 0.08) 6px 12px),
+    repeating-linear-gradient(45deg, #0a251c 0 8px, #061a13 8px 16px);
+  border: 2px solid #1a5138;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 0 0 3px rgba(26, 81, 56, 0.35);
   position: relative;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.card-back::after {
-  content: '⚓';
+/* 外圈符文铭刻 */
+.card-back::before {
+  content: 'ᛟ ᚦ ᛉ ᛝ ᛟ ᚱ';
   position: absolute;
-  inset: 0 0 22px;
+  inset: 0 0 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  color: rgba(125, 211, 252, 0.35);
+  font-family: var(--font-rune);
+  font-size: 11px;
+  letter-spacing: 7px;
+  color: rgba(134, 242, 172, 0.14);
+  pointer-events: none;
+}
+
+/* 圣徽：星芒圆环 */
+.card-back::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.8;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Ccircle cx='48' cy='48' r='40' fill='none' stroke='%232f7d58' stroke-width='1.6'/%3E%3Ccircle cx='48' cy='48' r='31' fill='none' stroke='%231c5a3f' stroke-width='1' stroke-dasharray='3 6'/%3E%3Cpath d='M48 22 L53 37 L68 38 L57 49 L60 64 L48 56 L36 64 L39 49 L28 38 L43 37 Z' fill='none' stroke='%2386f2ac' stroke-width='1.6'/%3E%3Cpath d='M48 10 L48.5 18 M48 78 L48.5 86 M14 48 L22.5 48 M73.5 48 L82 48' stroke='%2334d399' stroke-width='1.4' stroke-linecap='round' opacity='0.6'/%3E%3C/svg%3E") center / 62% auto no-repeat;
 }
 
 /* 卡背鱼群难度区间徽章（实际难度在区间内 ±1，如难度 4 → "3-5"） */
@@ -33,9 +48,9 @@
   transform: translateX(-50%);
   padding: 2px 9px;
   border-radius: 10px;
-  background: rgba(8, 18, 32, 0.88);
-  border: 1px solid rgba(125, 211, 252, 0.35);
-  color: #7dd3fc;
+  background: rgba(1, 10, 8, 0.88);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: var(--accent);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -43,14 +58,14 @@
   z-index: 2;
 }
 
-/* 卡面（面朝上）：上半 50% 插画 + 下半 50% 信息区 */
+/* 卡面（面朝上）：上半 50% 插画 + 下半信息区，全幅画 + 暗蚀层 */
 .card-front {
   width: var(--card-w);
   height: var(--card-h);
   border-radius: var(--radius);
   background-color: var(--bg-card);
   border: 2px solid var(--line);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
@@ -59,12 +74,12 @@
   transition: transform var(--anim-med), border-color var(--anim-fast), filter var(--anim-fast), box-shadow var(--anim-fast);
 }
 
-/* —— 上半：插画区（占满整张卡，文字浮于其上）—— */
+/* —— 上半：插画区（占满整张卡，文字浮于其上） —— */
 .card-front .cf-art-wrap {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: linear-gradient(160deg, #12304f, #0a1c33);
+  background: linear-gradient(160deg, #071d17, #04100c);
 }
 
 .card-front .cf-art-wrap .cf-art {
@@ -76,22 +91,24 @@
 
 /* 插画加载失败时降级为渐变底 + 幽灵剪影 */
 .card-front .cf-art-wrap.art-fallback::after {
-  content: '🐟';
+  content: 'ᛝ';
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 34px;
-  color: rgba(125, 211, 252, 0.25);
+  font-family: var(--font-rune);
+  font-size: 40px;
+  color: rgba(134, 242, 172, 0.22);
 }
 
+/* 腐化卡：毒橙蚀边 + 腐蚀脓光 */
 .card-front.foul {
   border-color: var(--foul);
-  box-shadow: 0 4px 12px rgba(194, 65, 12, 0.35);
+  box-shadow: 0 4px 12px rgba(255, 91, 61, 0.3);
 }
 
-/* —— 下半：信息区（浮于卡面上约 50%，背景透明，用文字阴影保证可读）—— */
+/* —— 下半：信息区（浮于卡面上约 50%，暗蚀薄膜保证可读） —— */
 .card-front .cf-info {
   position: absolute;
   left: 0;
@@ -101,10 +118,21 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 6px 7px 8px;
-  background: transparent;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.92), 0 0 8px rgba(0, 0, 0, 0.7);
+  padding: 7px 7px 8px;
+  background: linear-gradient(180deg, transparent 0%, rgba(2, 12, 9, 0.35) 26%, rgba(2, 11, 8, 0.82) 100%);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.92), 0 0 10px rgba(0, 0, 0, 0.8);
   -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.55);
+}
+
+/* 信息区顶部一道羊皮纸蚀痕 */
+.card-front .cf-info::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 6px;
+  right: 6px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(207, 192, 154, 0.5), transparent);
 }
 
 .card-front .cf-stats {
@@ -130,7 +158,7 @@
   gap: 1px;
   font-size: 11px;
   font-weight: 700;
-  color: #e0f2fe;
+  color: #d9f3e1;
   white-space: nowrap;
 }
 
@@ -149,12 +177,13 @@
 .card-front .cf-name {
   font-size: 12px;
   font-weight: 700;
-  color: #fff;
+  color: #f0f3e4;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 0;
+  letter-spacing: 1px;
 }
 
 .card-front .cf-ability {
@@ -162,8 +191,8 @@
   min-height: 0;
   overflow: hidden;
   font-size: 10px;
-  line-height: 1.35;
-  color: #9fc3e8;
+  line-height: 1.4;
+  color: #a5d6bf;
   text-align: center;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -184,18 +213,18 @@
   letter-spacing: 1px;
 }
 
-/* 横置（能力已用）：旋转 90° + 灰化 */
+/* 横置（能力已用）：旋转 90° + 灰化 + 磷光熄灭 */
 .card-front.exhausted {
   transform: rotate(90deg);
-  filter: grayscale(0.85) brightness(0.75);
+  filter: grayscale(0.9) brightness(0.7);
   border-color: var(--text-faint);
 }
 
-/* 可选/已选高亮 */
+/* 可选/已选高亮：磷光描边 */
 .card-front.selectable,
 .card-back.selectable {
   cursor: pointer;
-  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 2px rgba(134, 242, 172, 0.6), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .card-front.selectable:hover,
@@ -205,13 +234,13 @@
 
 .card-front.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent), 0 6px 18px rgba(45, 212, 191, 0.35);
+  box-shadow: 0 0 0 3px var(--accent), 0 6px 18px rgba(134, 242, 172, 0.3);
   transform: translateY(-6px);
 }
 
 .card-front.legal-target {
   border-color: var(--accent-strong);
-  box-shadow: 0 0 0 2px var(--accent-strong), 0 0 14px rgba(45, 212, 191, 0.4);
+  box-shadow: 0 0 0 2px var(--accent-strong), 0 0 16px rgba(52, 211, 153, 0.4);
   cursor: pointer;
 }
 

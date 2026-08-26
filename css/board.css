@@ -1,4 +1,4 @@
-/* ===== 棋盘：浅滩堆 / 抽出牌区 / 玩家钓获区 / 操作区 ===== */
+/* ===== 棋盘：浅滩堆 / 抽出牌区 / 玩家钓获区 / 操作区（克苏鲁化） ===== */
 
 /* 浅滩区 */
 .shoals-row {
@@ -31,21 +31,21 @@
   min-width: 22px;
   height: 22px;
   padding: 0 4px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #04211d;
+  border-radius: 4px;
+  background: var(--accent-deep);
+  color: #d9f7e6;
   font-size: 13px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 5;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(134, 242, 172, 0.4);
 }
 
 .shoal.highlight {
-  background: rgba(45, 212, 191, 0.06);
-  border-color: rgba(45, 212, 191, 0.3);
+  background: rgba(52, 211, 153, 0.06);
+  border-color: rgba(52, 211, 153, 0.3);
 }
 
 .shoal .shoal-stack {
@@ -73,6 +73,8 @@
 .shoal .shoal-label {
   font-size: 12px;
   color: var(--text-dim);
+  font-family: var(--font-display);
+  letter-spacing: 1px;
 }
 
 .shoal .shoal-count {
@@ -95,16 +97,31 @@
   cursor: pointer;
   border-color: var(--accent-strong);
   color: var(--accent);
-  box-shadow: 0 0 12px rgba(45, 212, 191, 0.28);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.28);
 }
 
-/* 抽出牌区 */
+/* 抽出牌区：祭坛祭盘 */
 .drawn-area {
-  background: var(--bg-panel);
+  background:
+    linear-gradient(180deg, rgba(9, 39, 30, 0.7), rgba(4, 18, 14, 0.9)),
+    var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 14px 16px;
   min-height: 300px;
+  position: relative;
+}
+
+.drawn-area::before {
+  content: 'ᛝ ᛞ ᛟ';
+  position: absolute;
+  top: 6px;
+  left: 16px;
+  font-family: var(--font-rune);
+  font-size: 11px;
+  letter-spacing: 6px;
+  color: var(--rune-faint);
+  pointer-events: none;
 }
 
 .drawn-area .da-head {
@@ -118,11 +135,14 @@
   font-size: 14px;
   color: var(--text-dim);
   font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: 2px;
 }
 
 .drawn-area .da-hint {
   font-size: 13px;
   color: var(--accent);
+  text-shadow: 0 0 12px rgba(134, 242, 172, 0.3);
 }
 
 .drawn-cards {
@@ -150,7 +170,7 @@
   margin: 12px auto 0;
   width: fit-content;
   color: var(--accent);
-  border-color: rgba(45, 212, 191, 0.35);
+  border-color: rgba(52, 211, 153, 0.35);
 }
 
 /* 抽出牌卡片下方的阶段性上下文按钮行：跳过能力阶段 / 确认抽牌 / 清空重选 / 取消放回 统一在此 */
@@ -181,6 +201,7 @@
   border-radius: var(--radius-lg);
   padding: 12px;
   min-height: 110px;
+  position: relative;
 }
 
 .caught-panel .cp-head {
@@ -188,11 +209,15 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  border-bottom: 1px solid var(--line-soft);
+  padding-bottom: 6px;
 }
 
 .caught-panel .cp-name {
   font-weight: 700;
   font-size: 14px;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
 }
 
 .caught-panel .cp-meta {
@@ -259,11 +284,12 @@
   min-height: 20px;
 }
 
-/* 热座遮挡 */
+/* 热座遮挡：深渊吞噬提示 */
 .turn-cover {
   position: fixed;
   inset: 0;
-  background: rgba(4, 12, 22, 0.92);
+  background:
+    radial-gradient(100% 80% at 50% 45%, rgba(6, 30, 24, 0.6), rgba(1, 7, 10, 0.96) 75%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -275,9 +301,11 @@
 
 .turn-cover .tc-title {
   font-size: 30px;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
   font-weight: 800;
+  font-family: var(--font-display);
   color: var(--accent);
+  text-shadow: 0 0 22px rgba(134, 242, 172, 0.4);
 }
 
 .turn-cover .tc-sub {
@@ -287,10 +315,13 @@
 
 /* 观战 / Solo 界面通用面板 */
 .side-panel {
-  background: var(--bg-panel);
+  background:
+    linear-gradient(180deg, rgba(9, 39, 30, 0.6), rgba(4, 18, 14, 0.9)),
+    var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 14px;
+  position: relative;
 }
 
 .panel-title {
@@ -298,7 +329,15 @@
   font-weight: 700;
   color: var(--text-dim);
   margin-bottom: 10px;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  font-family: var(--font-display);
+  border-bottom: 1px solid var(--line-soft);
+  padding-bottom: 6px;
+}
+
+.panel-title::before {
+  content: 'ᛟ ';
+  color: var(--rune-dim);
 }
 
 /* ---- M4 观战面板 ---- */
@@ -326,21 +365,21 @@
   gap: 4px;
   background: var(--bg-deep);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 3px;
 }
 
 .spectate-panel .seg-btn {
   padding: 6px 12px;
   font-size: 13px;
-  border-radius: 8px;
+  border-radius: 6px;
   color: var(--text-dim);
   transition: background var(--anim-fast), color var(--anim-fast);
 }
 
 .spectate-panel .seg-btn.active {
-  background: var(--accent);
-  color: #04211d;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #02130b;
   font-weight: 700;
 }
 
@@ -367,7 +406,7 @@
 }
 
 .sp-log-item {
-  background: rgba(8, 18, 32, 0.6);
+  background: rgba(1, 10, 8, 0.6);
   border: 1px solid var(--line);
   border-left: 3px solid var(--line);
   border-radius: 8px;
@@ -385,7 +424,7 @@
 
 .sp-log-item.hl-over {
   border-left-color: var(--accent);
-  background: rgba(45, 212, 191, 0.08);
+  background: rgba(52, 211, 153, 0.08);
 }
 
 .sp-li-head {
@@ -434,8 +473,8 @@
   font-size: 11px;
   padding: 1px 8px;
   border-radius: 20px;
-  background: rgba(45, 212, 191, 0.12);
-  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
   color: var(--accent);
 }
 
@@ -470,7 +509,10 @@
 .solo-panel .solo-opp-name {
   font-size: 16px;
   font-weight: 800;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
   color: var(--accent);
+  text-shadow: 0 0 14px rgba(134, 242, 172, 0.3);
 }
 
 .solo-panel .solo-opp-sub {
@@ -510,8 +552,8 @@
   min-width: 16px;
   height: 16px;
   padding: 0 3px;
-  border-radius: 8px;
-  background: rgba(4, 33, 29, 0.85);
+  border-radius: 4px;
+  background: rgba(2, 19, 11, 0.85);
   color: var(--accent);
   font-size: 11px;
   font-weight: 800;
@@ -535,20 +577,20 @@
   color: var(--text-dim);
   padding: 6px 8px;
   border-radius: 8px;
-  background: rgba(8, 18, 32, 0.5);
+  background: rgba(1, 10, 8, 0.5);
   border: 1px solid var(--line);
 }
 
 .solo-goal.done {
   color: var(--text);
-  border-color: rgba(45, 212, 191, 0.4);
-  background: rgba(45, 212, 191, 0.08);
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.08);
 }
 
 .solo-goal.failed {
   color: var(--text);
-  border-color: rgba(248, 113, 113, 0.45);
-  background: rgba(248, 113, 113, 0.08);
+  border-color: rgba(239, 109, 109, 0.45);
+  background: rgba(239, 109, 109, 0.08);
 }
 
 .solo-goal-mark {
@@ -583,8 +625,8 @@
   font-size: 13px;
   line-height: 1.6;
   color: var(--gold);
-  background: rgba(251, 191, 36, 0.06);
-  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(228, 198, 120, 0.05);
+  border: 1px solid rgba(228, 198, 120, 0.22);
   border-radius: 8px;
   padding: 8px 10px;
   min-height: 40px;
@@ -616,6 +658,7 @@
   font-weight: 800;
   color: var(--gold);
   letter-spacing: 2px;
+  font-family: var(--font-display);
 }
 
 .solo-eval-stars {

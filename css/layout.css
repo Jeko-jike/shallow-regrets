@@ -1,11 +1,11 @@
-/* ===== 页面布局：首页 / 对局页 / 结算页 ===== */
+/* ===== 页面布局：首页 / 对局页 / 结算页（克苏鲁化） ===== */
 
 /* ---- 首页 ---- */
 .home-screen {
   display: none;
   max-width: 980px;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 44px 20px 60px;
 }
 
 .home-screen.active {
@@ -14,34 +14,64 @@
 
 .home-title {
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .home-title h1 {
-  font-size: 42px;
-  letter-spacing: 6px;
-  background: linear-gradient(135deg, var(--accent), #7dd3fc);
+  font-family: var(--font-display);
+  font-size: 46px;
+  font-weight: 700;
+  letter-spacing: 12px;
+  background: linear-gradient(180deg, #f3f0da 0%, var(--gold) 45%, #8a7a44 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 30px rgba(45, 212, 191, 0.25);
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 22px rgba(134, 242, 172, 0.18));
+  text-indent: 12px; /* 抵消字距造成的视觉偏移 */
+}
+
+/* 标题上下的古神符文引线 */
+.home-title::before,
+.home-title::after {
+  display: block;
+  text-align: center;
+  font-family: var(--font-rune);
+  letter-spacing: 12px;
+  font-size: 12px;
+  color: var(--rune-dim);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.home-title::before {
+  content: 'ᚱ ᚨ ᛁᚦ ᛟ ᚱ ᚨ ᛁᚦ';
+  margin-bottom: 6px;
+}
+
+.home-title::after {
+  content: 'ᛟ ᚨ ᛉ ᛞ ᛁᚦ ᛟ ᛉ';
+  margin-top: 6px;
+  opacity: 0.7;
 }
 
 .home-title .sub {
   color: var(--text-dim);
+  font-family: var(--font-display);
   font-size: 14px;
-  letter-spacing: 3px;
-  margin-top: 6px;
+  letter-spacing: 6px;
+  text-indent: 6px;
+  margin-top: 8px;
 }
 
 .home-subtitle {
   text-align: center;
   color: var(--text-dim);
   font-size: 15px;
-  margin: 10px 0 28px;
-  line-height: 1.6;
+  margin: 14px 0 30px;
+  line-height: 1.7;
 }
 
+/* 模式卡：暗蚀祭坛石板 + 符文角饰 */
 .mode-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -50,58 +80,81 @@
 
 .mode-card {
   position: relative;
-  padding: 22px 20px;
+  padding: 24px 22px 22px;
   border-radius: var(--radius-lg);
-  background: linear-gradient(160deg, rgba(18, 42, 68, 0.9), rgba(10, 26, 44, 0.9));
+  background:
+    linear-gradient(160deg, rgba(11, 43, 32, 0.72), rgba(4, 18, 14, 0.92)),
+    var(--bg-card);
   border: 1px solid var(--line);
   text-align: left;
-  transition: transform var(--anim-med), border-color var(--anim-med), box-shadow var(--anim-med);
   overflow: hidden;
+  transition: transform var(--anim-med), border-color var(--anim-med), box-shadow var(--anim-med);
 }
 
 .mode-card::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(400px 200px at 100% 0%, rgba(45, 212, 191, 0.12), transparent);
+  background: radial-gradient(430px 220px at 100% 0%, rgba(52, 211, 153, 0.10), transparent);
   pointer-events: none;
+}
+
+.mode-card::after {
+  content: 'ᛝ · ᛉ · ᛟ';
+  position: absolute;
+  right: 14px;
+  bottom: 7px;
+  font-family: var(--font-rune);
+  font-size: 11px;
+  letter-spacing: 5px;
+  color: var(--rune-faint);
+  pointer-events: none;
+}
+
+/* 左上角尖角符（太阳十字星饰） */
+.mode-card .mode-tag::before {
+  content: '✦ ';
+  color: var(--accent);
 }
 
 .mode-card:hover {
   transform: translateY(-3px);
-  border-color: var(--accent);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  border-color: rgba(52, 211, 153, 0.6);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5), 0 0 26px rgba(52, 211, 153, 0.12);
 }
 
 .mode-card .mode-tag {
   display: inline-block;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1px;
+  font-family: var(--font-display);
+  letter-spacing: 2px;
   color: var(--accent);
-  background: rgba(45, 212, 191, 0.12);
-  border: 1px solid rgba(45, 212, 191, 0.3);
-  padding: 2px 8px;
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  padding: 3px 10px;
   border-radius: 20px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .mode-card h3 {
-  font-size: 20px;
+  font-size: 21px;
+  font-family: var(--font-display);
+  letter-spacing: 3px;
   margin-bottom: 6px;
 }
 
 .mode-card p {
   color: var(--text-dim);
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
 .home-actions {
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: 30px;
   flex-wrap: wrap;
 }
 
@@ -109,7 +162,7 @@
 .game-screen {
   display: none;
   min-height: 100vh;
-  padding: 12px 16px 24px;
+  padding: 12px 16px 28px;
   max-width: 1080px;
   margin: 0 auto;
 }
@@ -123,13 +176,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 4px 12px;
+  padding: 8px 4px 14px;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .game-topbar .title {
   font-size: 18px;
   font-weight: 700;
-  letter-spacing: 2px;
+  font-family: var(--font-display);
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(228, 198, 120, 0.18);
 }
 
 .game-topbar .turn-info {
@@ -152,18 +209,37 @@
 .player-chip {
   flex: 1;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--bg-panel);
   border: 1px solid var(--line);
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+  overflow: hidden;
   transition: border-color var(--anim-fast), box-shadow var(--anim-fast);
 }
 
+/* 玩家牌活着的磷光底部蚀线 */
+.player-chip::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity var(--anim-fast);
+}
+
 .player-chip.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgba(45, 212, 191, 0.2);
+  border-color: rgba(52, 211, 153, 0.7);
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.18);
+}
+
+.player-chip.active::after {
+  opacity: 1;
 }
 
 .player-chip .p-name {
@@ -221,7 +297,7 @@
 .result-screen {
   display: none;
   min-height: 100vh;
-  padding: 30px 20px 60px;
+  padding: 34px 20px 60px;
   max-width: 900px;
   margin: 0 auto;
 }
@@ -232,15 +308,20 @@
 
 .result-title {
   text-align: center;
-  font-size: 34px;
-  letter-spacing: 4px;
+  font-size: 36px;
+  font-family: var(--font-display);
+  letter-spacing: 8px;
+  color: var(--gold);
+  text-shadow: 0 0 26px rgba(228, 198, 120, 0.22);
   margin-bottom: 6px;
 }
 
 .result-subtitle {
   text-align: center;
   color: var(--text-dim);
-  margin-bottom: 24px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  margin-bottom: 26px;
 }
 
 .result-grid {
@@ -255,11 +336,22 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 18px;
+  position: relative;
+}
+
+.result-card::after {
+  content: 'ᛟ ᛁ';
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  font-family: var(--font-rune);
+  font-size: 12px;
+  color: var(--rune-faint);
 }
 
 .result-card.winner {
-  border-color: var(--gold);
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.15);
+  border-color: rgba(228, 198, 120, 0.6);
+  box-shadow: 0 0 26px rgba(228, 198, 120, 0.16);
 }
 
 .result-card .rc-head {
@@ -278,6 +370,7 @@
   font-size: 26px;
   font-weight: 800;
   color: var(--gold);
+  text-shadow: 0 0 14px rgba(228, 198, 120, 0.3);
 }
 
 .result-card .rc-caught {
@@ -324,7 +417,7 @@
   display: none;
   max-width: 640px;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 44px 20px 60px;
 }
 
 .lobby-screen.active {
@@ -339,7 +432,9 @@
 .lobby-title {
   font-size: 28px;
   font-weight: 800;
-  letter-spacing: 3px;
+  font-family: var(--font-display);
+  letter-spacing: 5px;
+  color: var(--gold);
   margin-bottom: 18px;
 }
 
@@ -351,6 +446,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 12px 22px;
+  box-shadow: 0 0 22px rgba(52, 211, 153, 0.08);
 }
 
 .lobby-code-label {
@@ -363,6 +459,7 @@
   font-weight: 800;
   letter-spacing: 8px;
   color: var(--accent);
+  text-shadow: 0 0 16px rgba(134, 242, 172, 0.4);
   font-family: var(--font-mono, monospace);
 }
 
@@ -399,7 +496,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--bg-panel);
   border: 1px solid var(--line);
 }
@@ -419,17 +516,17 @@
 
 .lobby-player .lp-tag.host {
   color: var(--gold);
-  border-color: rgba(251, 191, 36, 0.4);
+  border-color: rgba(228, 198, 120, 0.4);
 }
 
 .lobby-player .lp-tag.ready {
   color: var(--accent);
-  border-color: rgba(45, 212, 191, 0.4);
+  border-color: rgba(52, 211, 153, 0.4);
 }
 
 .lobby-player .lp-tag.offline {
   color: var(--foul);
-  border-color: rgba(248, 113, 113, 0.4);
+  border-color: rgba(239, 109, 109, 0.4);
 }
 
 .lobby-player .lp-kick {

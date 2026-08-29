@@ -12,7 +12,7 @@
       "Vitest + jsdom"
     ],
     "entry": "index.html（单页入口）；js/main.js（前端启动/路由）",
-    "last_touch": "2026-08-26"
+    "last_touch": "2026-08-29"
   },
   "project_info": {
     "name": "浅滩鱼悔 · Shallow Regrets",
@@ -33,9 +33,9 @@
       { "path": "js/main.js", "purpose": "前端入口：模式路由、对局控制器、M3 联机会话、点击事件绑定、入口设置弹窗(含亮度/伽马滑块)", "last_updated": "2026-08-26" },
       { "path": "js/core/cards.js", "purpose": "24 张卡唯一数据源（含 strength 所需钩数 与 hooks 提供钩数）", "last_updated": "2026-08-26" },
       { "path": "js/core/gameState.js", "purpose": "初始状态 / 不可变更新 / getHooks / ensureSmallTops（保证开局易钓顶牌）", "last_updated": "2026-08-26" },
-      { "path": "js/core/stateMachine.js", "purpose": "状态机 PHASE/ACTION、validateAction、applyAction", "last_updated": "2026-08-26" },
+      { "path": "js/core/stateMachine.js", "purpose": "状态机 PHASE/ACTION、validateAction、applyAction", "last_updated": "2026-08-29" },
       { "path": "js/core/rules.js", "purpose": "取牌合法性 / 强度判定 / 放生 / 终局判定 / getCatchLimit", "last_updated": "2026-08-26" },
-      { "path": "js/core/abilities.js", "purpose": "24 种能力效果纯函数表 + 目标校验 + 确定性随机", "last_updated": "2026-08-26" },
+      { "path": "js/core/abilities.js", "purpose": "24 种能力效果纯函数表 + 目标校验 + 确定性随机", "last_updated": "2026-08-29" },
       { "path": "js/ui/render.js", "purpose": "浅滩 / 抽出牌 / 钓获区 / 结算渲染；buildCardFront；卡背难度区间(0/1-2/3-5 固定三段)；阶段按钮 .dc-ctx", "last_updated": "2026-08-26" },
       { "path": "js/ui/interaction.js", "purpose": "交互计算（可点性/提示/buildBoardUi 共享棋盘 UI 描述）", "last_updated": "2026-08-26" },
       { "path": "js/ui/boardInteraction.js", "purpose": "玩家棋盘点击处理（M1/M2/M3/M5 共用，工厂注入 getState/getUi/dispatch/renderAll）", "last_updated": "2026-08-26" },
@@ -43,7 +43,8 @@
       { "path": "js/spectate/spectate.js", "purpose": "M4 SpectateController：回合调度 / 自动手动 / 速度档位 / 回放", "last_updated": "2026-08-25" },
       { "path": "server/server.js", "purpose": "Socket.IO 联机服务端入口：静态托管 + Socket.IO", "last_updated": "2026-08-25" },
       { "path": "public/cards/*.jpg", "purpose": "24 张本地卡图（竖版高清 JPG），getArtUrl 返回相对路径 cards/{id}.jpg", "last_updated": "2026-08-26" },
-      { "path": "tools/inline-build.mjs", "purpose": "构建后内联 JS/CSS 到 dist/index.html（可双击离线运行）；replace 必须用替换函数防 $& 模式破坏", "last_updated": "2026-08-26" }
+      { "path": "tools/inline-build.mjs", "purpose": "构建后内联 JS/CSS 到 dist/index.html（可双击离线运行）；replace 必须用替换函数防 $& 模式破坏", "last_updated": "2026-08-26" },
+      { "path": "tools/stress.mjs", "purpose": "深核压测 harness：驱动真实 AI 跑 2/4 人完整对局，多种子检测死锁/僵局/状态不变量（卡牌唯一 vs 浅滩∪已钓区、exhausted⊆全体已钓区并集）；node tools/stress.mjs [--2p N] [--4p N] [--seedBase N]", "last_updated": "2026-08-29" }
     ],
     "architecture": "依赖方向仅 ui→core（只读状态、派发动作）；core 纯逻辑不下探 DOM；net 只依赖 core 协议与状态机；server 复用 core 不被反向依赖；禁止循环依赖。状态快照可序列化。M3 主机权威：服务端复用 stateMachine 校验并广播，本地客户端不自行推进。部署：source 分支不跟踪 dist/，产物由 gh-pages 分支独家托管。"
   },
@@ -58,6 +59,7 @@
     "卡图一律本地方案：public/cards/{id}.jpg + getArtUrl 返回相对路径，与网络解耦"
   ],
   "recent_changes": [
+    { "date": "2026-08-29", "change": "深度随机压测(新增 tools/stress.mjs，驱动真实AI跑2/4人局，多种子检查死锁/僵局/不变量)修复3个横置态一致性Bug：①梭子鱼REMOVE_ZERO移除已钓难度0卡不同步清exhausted→splice后同步移除该玩家exhausted记录；②断脚GIVE_CARD送卡时横置随卡转移到新主人(源移除/目标追加,防新主重复发动,原主无stale)；③stateMachine USE_ABILITY尾部me.exhausted.push改为仅当me.caught.includes(cardId)才写回(防已交出的卡残留横置原主)。新增2个确定性回归单测(断脚送卡横置转移/梭子鱼清横置)。173测试全绿+build通过+_smoke/repro复跑正常。tools/stress.mjs已全绿(seed覆盖1/1001/5001/90000/300000/777000)。", "impact": "js/core/abilities.js、js/core/stateMachine.js、tests/core/abilities24.test.js、tools/stress.mjs、docs/PROJECT_NOTE.md、docs/CHANGELOG.md" },
     { "date": "2026-08-26", "change": "五连修复：①腐鱼PASS_LEFT(abilities.js)转移鱼卡时exhausted横置态随卡走(源移除/目标追加)，腐鱼传自身后接收方仍横置不可复用；②boardInteraction.js详情页仅active能力出『发动能力』+onFishClick对aim=null瞄准态兜底自清，杜绝永续卡点击卡死；③rules.js hasLowerAlternative改只看state.drawn(本回合抽到的鱼)：1+2都可捕/1+4只捕1/5+4都可捕，非浅滩可接触牌；④renderShoals读取state.revealedTops，凯尔派命中的浅滩顶牌翻面公示(绝对定位覆盖不占nth-child层序+『公示』徽标)；⑤入口设置弹窗新增亮度/伽马滑块(filter:brightness作用于body,范围0.6-2.2,localStorage key shallow_regrets_brightness,启动恢复)。171测(新增腐鱼自传/旧日3示例/亮度/揭示4项)全绿+dist重建", "impact": "js/core/abilities.js、js/core/rules.js、js/ui/boardInteraction.js、js/ui/render.js、js/main.js、css/board.css、css/modal.css、tests/core/abilities24.test.js、tests/ui/main.test.js、docs/PROJECT_NOTE.md" },
     { "date": "2026-08-26", "change": "M3联机根因修复+体验增强：①根因=main.js $助手为 document.getElementById(裸id) 但联机大厅代码全写成 $('#xxx') 带#号→恒null使 renderLobby 首行即崩→点进入房间无反应/无等待页无房间码；已将该25处改为裸id，浏览器实测建房出码+已连接+房主在线标；②点进入房间即进等待大厅(连接中/占位码)且6s超时明确报错；③对局玩家栏/大厅新增在线&掉线·AI托管徽标(renderPlayersBar增可选meta第三参)。165测绿build成功", "impact": "js/main.js(根因+等待厅+徽标注入)、js/ui/render.js(renderPlayersBar meta徽标)、css/layout.css、tests/ui/main.test.js(+2徽标测试)" },
     { "date": "2026-08-26", "change": "修复联网 bat 两个导致联机不可用的问题：①检测不到项目根目录的 cloudflared-windows-amd64.exe 不开隧道（原来只查 PATH 和 tools\\ 而 exe 在根目录故漏检，无 trycloudflare URL）；②起 server 后盲目开隧道致 502 Bad Gateway（npm run serve 没起来仍开隧道命中空端口）——改为起 server 后循环探测端口出现 LISTENING（最多15s）成功才开隧道、失败醒目报错停。另删空壳 assets/ 目录、tools/README.md 放置说明改三选一（根目录原样放即可被自动检测），实测 netstat 正则可匹配监听端口不误报。", "impact": "一键启动联网游戏.bat(根目录检测+端口就绪探测)、tools/README.md、删除空 assets/；本地 3000 直连 HTTP 200 验证通过" },
@@ -67,7 +69,7 @@
   "known_issues": [
     { "id": 1, "description": "docs/ASSETS.md 仍写 'assets/ 为空（当前 UI 纯 CSS）'，与实际 public/cards/ 卡图不符；卡图所有权/许可/生成工具需补登记。", "status": "open", "priority": "medium" },
     { "id": 2, "description": "card-size-preview.html 为临时预览文件（含尺寸滑块），定稿后可移除或保留为工具。", "status": "open", "priority": "low" },
-    { "id": 3, "description": "docs/CHANGELOG.md 与 docs/ASSETS.md 仍是 18 卡版本，与实际 24 卡不符，需同步修档。", "status": "open", "priority": "medium" }
+    { "id": 3, "description": "docs/ASSETS.md 仍是 18 卡/空 assets 版本（卡图信息/所有权/许可/生成工具需补登记到 ASSETS.md），与当前 24 卡/本地 cards 现状不符。CHANGELOG 已于 0.8.1 同步到 24 卡版本。", "status": "open", "priority": "medium" }
   ],
   "gotchas": [
     "克苏鲁化装饰层全部用 CSS/data-URI，永不可用外链字体/图片（否则破坏单机 file:// 双击）；氛围层容器(index.html .cthulhu-bg)必须 pointer-events:none、z-index 低于弹窗(toast 200/modal 100/遮挡 50)，暗角噪点放 z45；本地预览用 npx vite preview（npm run preview 后接参数会误把端口当 root 导致报 dist 不存在）",
@@ -90,7 +92,8 @@
     "传牌能力(PASS_LEFT 腐鱼)在 abilities.js 转移鱼卡时 exhausted 横置态随卡走（源移除/目标追加），接收方能否复用看新主人的横置标记",
     "inline-build.mjs 内联 JS/CSS 时 String.replace 第二参必须用替换函数（() => `...`）而非替换串：压缩 bundle 里的 '$&'/'$''/'$`'/'$$' 会被 replace 当特殊模式解释，导致内联内容被破坏（曾致 dist/index.html 双击白屏）",
     "联网 bat 检测 cloudflared 顺序 = PATH → 项目根目录 → tools\\；若开到隧道却 502 Bad Gateway，是 server.js 未监听（不是 cloudflared 问题）——bat 已内置端口就绪探测（起 server 后轮询 LISTENING 最多15s），成功才开隧道、失败报错停",
-    "main.js 的 $ 助手 = document.getElementById(id) 只收裸 id、绝不含 #；写 $('#xxx') 会恒返回 null 并抛 null.textContent。曾在联机大厅全写 # 号致 renderLobby 首行崩、点进入房间无反应。新增 DOM 引用一律用裸 id $('id')"
+    "main.js 的 $ 助手 = document.getElementById(id) 只收裸 id、绝不含 #；写 $('#xxx') 会恒返回 null 并抛 null.textContent。曾在联机大厅全写 # 号致 renderLobby 首行崩、点进入房间无反应。新增 DOM 引用一律用裸 id $('id')",
+    "横置态(exhausted)一致性命门：任何把卡移出某玩家 caught 的行为(梭子鱼移除游戏/断脚送卡/腐鱼传牌)都必须同步迁移或清除该卡的 exhausted 记录；状态机 USE_ABILITY 写回横置需先判 me.caught.includes(cardId)。回归防线=tools/stress.mjs(真实AI 2/4人局多种子校验：卡牌唯一 vs 浅滩∪已钓区、exhausted⊆全体已钓区并集)"
   ],
   "api_details": {
     "endpoints": [

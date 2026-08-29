@@ -184,7 +184,9 @@ export function applyAction(state, action) {
         pending = r.pending;
         if (!pending) events.push('ability_used');
       }
-      me.exhausted.push(action.cardId);
+      // 使用后横置。断脚(GIVE_CARD)会把自己的卡交给他人（卡离开 caught），
+      // 横置态已随卡转移给新主人，这里不能再标记回发起者，否则产生 stale 横置记录。
+      if (me.caught.includes(action.cardId)) me.exhausted.push(action.cardId);
       if (pending) {
         s.pending = pending;
         s.phase = PHASE.PENDING;

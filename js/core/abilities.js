@@ -427,8 +427,13 @@ export function applyUnboundedAbility(state, playerIndex, abilityKey, target, ct
     case ABILITY_TYPES.GIVE_CARD: {
       const dIdx = me.caught.indexOf(dCardId);
       if (dIdx === -1) throw new Error('give_card：找不到要送出的鱼');
+      // 横置态随卡转移到新主人：主动已用（牌被消耗），原主也不残留 stale 横置记录
+      const eIdx = me.exhausted.indexOf(dCardId);
+      if (eIdx !== -1) me.exhausted.splice(eIdx, 1);
       me.caught.splice(dIdx, 1);
-      state.players[target.playerIndex].caught.push(dCardId);
+      const recv = state.players[target.playerIndex];
+      recv.caught.push(dCardId);
+      recv.exhausted.push(dCardId);
       events.push('give_card');
       break;
     }
@@ -438,6 +443,8 @@ export function applyUnboundedAbility(state, playerIndex, abilityKey, target, ct
         const ri = opp.caught.indexOf(target.cardId);
         if (ri === -1) throw new Error('remove_zero：找不到对方已钓的鱼');
         opp.caught.splice(ri, 1);
+        const ei = opp.exhausted.indexOf(target.cardId);
+        if (ei !== -1) opp.exhausted.splice(ei, 1); // 移出游戏，横置态一并清除
       } else {
         state.shoals[target.shoalIndex].splice(target.cardIndex, 1);
       }

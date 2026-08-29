@@ -142,7 +142,22 @@ shallow-regrets/
    - 解决：先生成全部新图到临时名（如 `(1)` 文件），最后统一 `Remove-Item` 旧图 → `Move-Item` 新图覆盖为正式 `{id}.jpg`；废弃的非 24 卡旧图彻底删除。
    - 约定：**凡需批量替换同名资产，先收集所有新图再统一改名覆盖，避免出现 `(1)` 残留导致引用旧图**。
 
+15. **横置态（exhausted）必须始终指向实际存在的已钓卡**
+   - 现象：深度随机压测（`tools/stress.mjs`）发现对局中途 `exhausted` 残留指向"不在任何玩家 caught"的卡牌，破坏"卡牌在浅滩∪已钓区唯一存在"的状态快照不变式。
+   - 三个诱导点（已修）：①梭子鱼 `REMOVE_ZERO` 移除已钓卡时不清 `exhausted`；②断脚 `GIVE_CARD` 送卡只动 `caught` 不清送卡者的 `exhausted`；③状态机 `USE_ABILITY` 尾部 `me.exhausted.push(cardId)` 未校验卡是否仍在 `me.caught`（断脚把卡交出去后仍写回发起者）。
+   - 约定：**任何把卡移出某玩家 caught 的行为（移除游戏/送卡/交换）都必须同步迁移或清除该卡的 exhausted 记录**；状态机"已用主动卡横置"需判定 `me.caught.includes(cardId)` 才写回。
+   - 工具：`tools/stress.mjs` 可复跑多种子 2/4 人对局并校验不变量，作为深核回归防线。
+
 ## 三、任务日志
+
+### 2026-08-29 · 深度随机压测（3000+ 局多种子）与横置态一致性修复（0.8.1）
+- 新增 `tools/stress.mjs` 深度压力测试 harness：驱动**真实 AI**（`heuristicAI.chooseAction`）跑完整 2 人/4 人对局，跨大量种子（seed 覆盖 1/1001/5001/90000/300000/777000 等）检测三类问题——①`cap=600` 步内不终局（死锁）；②连续非法动作被拒（AI 与规则失配/僵局）；③分层状态不变量被破坏（卡牌唯一性 vs 浅滩∪已钓区、`exhausted ⊆ 全体已钓区并集`、未知卡 id、数值 NaN）。累计 **1700+ 局全绿**。
+- 修复 **3 个横置态（exhausted）一致性 Bug**（均在对局中途使 exhausted 残留指向不存在卡牌的记录，破坏状态快照可序列化不变式）：
+  1. **梭子鱼移除已钓鱼不清横置**（`abilities.js` `REMOVE_ZERO`）：从对方 `caught` 移除难度 0 卡时不同步清 `exhausted` → 残留 stale 记录。修复：splice 后同步从该玩家 `exhausted` 移除。
+  2. **断脚送出卡后横置残留原主**（`abilities.js` `GIVE_CARD`）：送出断脚时只动 `caught`。修复：横置随卡转移到新主人（源移除、目标追加），既防新主人重复发动又与腐鱼 `PASS_LEFT` 语义一致。
+  3. **状态机对"已离开的已用主动卡"写回横置**（`stateMachine.js` `USE_ABILITY` 尾部 `me.exhausted.push`）：断脚把卡交给他人后，卡已不在 `me.caught`，此处仍给 `me` 追加横置 → 制造 stale。修复：仅当 `me.caught.includes(action.cardId)` 才写回（GIVE_CARD 的横置已由能力随卡转移）。
+- 新增 2 个确定性回归单测（`abilities24.test.js`：断脚送卡横置随卡转移、梭子鱼移除已横置鱼清理横置态）。
+- 测试：**173/173 全绿**，`npm run build` 通过，`tools/_smoke.mjs` / `tools/repro-rotfish.mjs` 复跑正常。
 
 ### 2026-08-26 · 五连修复：腐鱼传牌横置 / 永续卡卡死 / 旧日支配者捕鱼限制 / 凯尔派揭示渲染 / 亮度调节
 - **腐鱼传自身不横置**：`abilities.js` 的 `PASS_LEFT` 结算如今在鱼卡跨玩家转移时把 `exhausted` 横置态一并"随卡走"（源移除、目标追加）；腐鱼发动后传给自己，接收方手里这张腐鱼仍横置不可复用。新增单测锁定。

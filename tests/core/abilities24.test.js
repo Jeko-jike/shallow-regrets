@@ -282,6 +282,15 @@ describe('断脚（送出）/ 腐鱼（传球）', () => {
     expect(s.players[0].caught).not.toContain('rotfish');
     expect(s.players[0].exhausted).not.toContain('rotfish'); // 不再滞留在原主横置列表
   });
+  it('断脚送出后横置态随卡转移给新主人，原主不残留 stale（回归）', () => {
+    // 回归：此前断脚送出后状态机把已用主动卡横置写回原主，导致原主 exhausted 残留不在 caught 的记录
+    let s = makeState({ current: 0, players: [ { c: ['severedFoot', 'lamprey'] }, { c: ['rotfish'] } ] });
+    s = act(s, { type: ACTION.USE_ABILITY, cardId: 'severedFoot', target: { playerIndex: 1 } });
+    expect(s.players[1].caught).toContain('severedFoot');       // 卡到 B
+    expect(s.players[1].exhausted).toContain('severedFoot');    // 已用 → 横置随卡到 B，B 不能重复发动
+    expect(s.players[0].caught).not.toContain('severedFoot');
+    expect(s.players[0].exhausted).not.toContain('severedFoot'); // 原主无残留 stale 横置
+  });
 });
 
 describe('梭子鱼 / 眼球团 / 凯尔派 / 美人鱼 / 海主教', () => {
@@ -303,6 +312,14 @@ describe('梭子鱼 / 眼球团 / 凯尔派 / 美人鱼 / 海主教', () => {
     s = act(s, { type: ACTION.USE_ABILITY, cardId: 'barracuda', target: { playerIndex: 1, cardId: 'lamprey' } });
     expect(s.players[1].caught).not.toContain('lamprey');
     expect(s.players[1].caught).toContain('oarfish');
+  });
+  it('梭子鱼移除对方已横置的难度0鱼时清理其横置态（回归）', () => {
+    // 回归：此前移除已钓区卡牌不清 exhausted，残留指向不存在卡牌的横置记录
+    let s = makeState({ current: 0, players: [ { c: ['barracuda'] }, { c: ['lamprey', 'oarfish'], e: ['lamprey'] } ] });
+    s = act(s, { type: ACTION.USE_ABILITY, cardId: 'barracuda', target: { playerIndex: 1, cardId: 'lamprey' } });
+    expect(s.players[1].caught).not.toContain('lamprey');
+    expect(s.players[1].exhausted).not.toContain('lamprey'); // 移出游戏，横置态一并清除
+    expect(s.players[1].exhausted).not.toContain('oarfish');
   });
   it('梭子鱼不能移除对方已钓的难度1鱼', () => {
     const s = makeState({ current: 0, players: [ { c: ['barracuda'] }, { c: ['oarfish'] } ] });

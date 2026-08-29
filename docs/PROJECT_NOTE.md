@@ -150,6 +150,23 @@ shallow-regrets/
 
 ## 三、任务日志
 
+### 2026-08-30 · M2 实操游玩找优化点：AI 重排冻结修复 / 空滩放回视觉 / AI 额外抽牌优先
+- **背景**：用工具+浏览器子代理实际游玩 M2「单人 AI 对战」，逐局记录 UI/交互/AI/逻辑问题。
+- **高优修复 · AI「眼球团/重排鱼群」单张浅滩冻结**（双保险）：
+  1. `js/ai/heuristicAI.js` `rearrange_shoal` 只挑 `>1` 张的可重排浅滩，单张不再发动；
+  2. `js/ui/boardInteraction.js`：REARRANGE pending 若 `cards.length<=1` 直接 RESOLVE，不弹窗；
+  3. `js/main.js` 新增 `drainAiPending()`+`aiOwnsPending()`：M2 回合自动结算轮到 AI 的反应窗口（REDIRECT/COUNTER/REARRANGE/PASS_LEFT），从根杜绝 AI 产生 pending 后冻结；仅对"轮到人类"的 pending 弹窗。
+  - 关键：原 `maybeRunAI` 遇 PENDING 直接 return，AI 自身的能力 pending（如重排）无人结算 → 卡在弹窗等人工确认。
+- **UX · 空浅滩放回目标视觉**：`css/board.css` `.shoal.empty .shoal-stack.selectable` 增强（磷光绿 + 径向背景 + `shoalDropPulse` 脉冲）；`js/ui/render.js` 空浅滩可放回时叠加「放回」横条角标 `.shoal-drop-hint`；非放回目标空滩不显示。
+- **AI · 额外抽牌更积极**：`chooseAbilityAction` 用 `PRIORITY={draw_plus2:0,draw_plus1:1,power_plus3:2}` 稳定排序，先锁定本回合抽牌上限/力量再发动其它能力（皇带鱼/七鳃鳗/海神之怒不吃"caught 排列序"的亏）。
+  - 坑：排序 comparator 早期误写 `CARD_BY_ID[a.id]?.ability`，而 `ready` 元素本就是卡 id 字符串（`a.id`=undefined→全 9→排序失效），须用 `CARD_BY_ID[a]`。
+- **文案**：`js/ui/render.js` 跳过按钮 `跳过能力阶段 →` → `跳过能力阶段（不发动）`（去歧义箭头、保留阶段名）。
+- **UX · 放回非法浅滩静默**：`js/ui/boardInteraction.js` CATCH 分支补 toast——点非法浅滩「只能放回高亮（可操作）的浅滩」，无可放回目标「当前回合不允许放回这张牌」；不再静默 return。
+- **核验/非bug**：「再来一局后旧结算面板残留」经查 `renderResult` 每次终局全量重建 `#resultGrid`/`#resultSubtitle`，旧内容仅藏在隐藏屏、终局即覆盖，非用户可见问题。
+- **回归**：新增 `tests/defense/aiRearrangeFreeze.test.js`（单张不选重排/多张仍选/额外抽牌优先）；`tests/ui/main.test.js` 新增空浅滩放回角标渲染断言；新增 `tests/ui/throwToast.test.js`（非法放回 toast、合法放回不误伤）。**178 测试全绿**、`tools/stress.mjs`（60 局 2p + 4 局 4p）无死锁、`npm run build` 通过。
+- **踩坑补充**：浏览器子代理自动化在本游戏"放回→选浅滩"阶段常卡在点击机制（空滩无卡背、DOM 异步重渲染），逐回合严格手玩耗时极大；本阶段改用 DOM 单测 + 压测做确定性验证。
+- **记录文档**：`docs/GAMEPLAY_FINDINGS.md` 汇总逐局问题与已修复清单。
+
 ### 2026-08-29 · 深度随机压测（3000+ 局多种子）与横置态一致性修复（0.8.1）
 - 新增 `tools/stress.mjs` 深度压力测试 harness：驱动**真实 AI**（`heuristicAI.chooseAction`）跑完整 2 人/4 人对局，跨大量种子（seed 覆盖 1/1001/5001/90000/300000/777000 等）检测三类问题——①`cap=600` 步内不终局（死锁）；②连续非法动作被拒（AI 与规则失配/僵局）；③分层状态不变量被破坏（卡牌唯一性 vs 浅滩∪已钓区、`exhausted ⊆ 全体已钓区并集`、未知卡 id、数值 NaN）。累计 **1700+ 局全绿**。
 - 修复 **3 个横置态（exhausted）一致性 Bug**（均在对局中途使 exhausted 残留指向不存在卡牌的记录，破坏状态快照可序列化不变式）：

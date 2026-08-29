@@ -69,6 +69,33 @@ describe('M1 本地热座', () => {
     expect(shoals[1].querySelectorAll('.card-back').length).toBe(2);
   });
 
+  it('空浅滩作为合法放回目标时显示「放回」可点视觉，非目标空滩不显示', () => {
+    const state = createInitialState({ seed: 1, playerNames: ['A', 'B'] });
+    state.currentPlayer = 0;
+    // 浅滩0 有牌（超目标）、浅滩1 空而可放回、浅滩2 空但非法
+    state.shoals = [['lamprey'], [], [], [], [], []];
+    const el = document.createElement('div');
+    const ui = {
+      canInteract: true,
+      throwTargets: [1],
+      shoalClickable: (i) => [1].includes(i),
+      shoalSelected: () => false,
+      peekTargets: [],
+      aimShoals: [],
+    };
+    render.renderShoals(el, state, ui, { onShoalClick: () => {} });
+    const shoals = Array.from(el.querySelectorAll('.shoal'));
+    const targetEmpty = shoals[1].querySelector('.shoal-stack');
+    const nonTargetEmpty = shoals[2].querySelector('.shoal-stack');
+    // 合法放回的空浅滩：selectable + 显示「放回」角标
+    expect(targetEmpty.classList.contains('selectable')).toBe(true);
+    expect(targetEmpty.querySelector('.shoal-drop-hint')).toBeTruthy();
+    expect(targetEmpty.querySelector('.shoal-drop-hint').textContent).toBe('放回');
+    // 非放回目标的空浅滩：无 selectable、无角标
+    expect(nonTargetEmpty.classList.contains('selectable')).toBe(false);
+    expect(nonTargetEmpty.querySelector('.shoal-drop-hint')).toBeNull();
+  });
+
   it('完整对局流程：设置 → 开局 → 抽牌 → 钓走/放回 → 回合切换', () => {
     // 1. 点击 M1 模式卡片 → 设置弹窗
     click($('[data-mode="m1"]'));

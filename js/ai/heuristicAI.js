@@ -76,8 +76,12 @@ function chooseAbilityAction(state) {
   const p = state.currentPlayer;
   const me = state.players[p];
   const ready = me.caught.filter((id) => !me.exhausted.includes(id) && CARD_BY_ID[id].ability);
+  // 优先发动"本回合额外抽牌/加力量"类能力（皇带鱼/七鳃鳗/海神之怒），
+  // 先锁定抽牌上限再处理其它，避免乱序导致额外抽牌被浪费或延后。
+  const PRIORITY = { draw_plus2: 0, draw_plus1: 1, power_plus3: 2 };
+  const byPriority = [...ready].sort((a, b) => (PRIORITY[CARD_BY_ID[a]?.ability] ?? 9) - (PRIORITY[CARD_BY_ID[b]?.ability] ?? 9));
 
-  for (const cardId of ready) {
+  for (const cardId of byPriority) {
     const action = buildAbilityAction(state, cardId);
     if (action) return action;
   }
@@ -201,7 +205,8 @@ function buildAbilityAction(state, cardId) {
     }
 
     case 'rearrange_shoal': {
-      const idx = getDrawableShoals(state)[0];
+      const shoals = getDrawableShoals(state).filter((i) => (state.shoals[i] || []).length > 1);
+      const idx = shoals[0];
       if (idx == null) return null;
       return { type: 'USE_ABILITY', cardId, target: { shoalIndex: idx } };
     }

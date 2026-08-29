@@ -163,11 +163,16 @@ export function renderShoals(el, state, ui, handlers) {
     stack.className = 'shoal-stack';
     const clickable = (ui.shoalClickable?.(i) ?? false) && ui.canInteract !== false;
     if (shoal.length === 0) {
-      stack.textContent = '空';
       // 空浅滩没有卡背可点，需让整个空堆可点（否则放回到空浅滩时点不动=卡死）
       if (clickable && handlers.onShoalClick) {
         stack.classList.add('selectable');
+        const hint = document.createElement('div');
+        hint.className = 'shoal-drop-hint';
+        hint.textContent = '放回';
+        stack.appendChild(hint);
         stack.addEventListener('click', () => handlers.onShoalClick(i));
+      } else {
+        stack.textContent = '空';
       }
     } else {
       const show = Math.min(shoal.length, 3);
@@ -311,7 +316,7 @@ function renderDrawnContext(el, state, ui, handlers, spectate) {
 
   switch (state.phase) {
     case PHASE.ABILITY:
-      add('跳过能力阶段 →', 'btn-ghost dc-skip', false, () => handlers.onPassAbilities?.());
+      add('跳过能力阶段（不发动）', 'btn-ghost dc-skip', false, () => handlers.onPassAbilities?.());
       if (ui.peekCanConfirm) add('确认查看', 'btn-primary', false, () => handlers.onConfirmPeek?.());
       if (ui.aim?.mode === 'shoalPeek') add('取消查看', 'btn-ghost', false, () => handlers.onCancelAim?.());
       break;

@@ -5,6 +5,7 @@
  */
 import { createInitialState } from './core/gameState.js';
 import { applyAction, ACTION, PHASE } from './core/stateMachine.js';
+import { autoResolution } from './core/abilities.js';
 import { getWinners } from './core/scoring.js';
 import { CARD_BY_ID } from './core/cards.js';
 import { canCatch, getCatchLimit } from './core/rules.js';
@@ -90,6 +91,30 @@ function makeInteraction() {
   });
 }
 
+/** 当前 pending 窗口是否轮到 AI（先手 0 / 后手 1）自动结算 */
+function aiOwnsPending(s) {
+  const p = s.pending;
+  if (!p || s.phase !== PHASE.PENDING) return false;
+  switch (p.type) {
+    case 'REDIRECT': return p.candidates.some((ci) => game.ai[ci]);
+    case 'COUNTER': return game.ai[p.counterP];
+    case 'REARRANGE': return game.ai[p.owner];
+    case 'PASS_LEFT': return game.ai[p.playerIndices[p.current]];
+    default: return false;
+  }
+}
+
+/** 自动消解轮到 AI 的反应窗口，避免 M2 中 AI 能力产生 pending 后冻结（如眼球团重排） */
+function drainAiPending() {
+  let guard = 0;
+  while (game.state && game.state.phase === PHASE.PENDING && aiOwnsPending(game.state) && guard++ < 20) {
+    const res = applyAction(game.state, { type: ACTION.RESOLVE, resolution: autoResolution(game.state) });
+    if (res.error) break;
+    game.state = res.state;
+    handleEvents(res.events);
+  }
+}
+
 function dispatch(action) {
   if (!game.state) return false;
   // M3 联机：动作交给服务端权威校验，本地不直接推进（等 STATE_SYNC）
@@ -106,12 +131,13 @@ function dispatch(action) {
   game.state = res.state;
   logger.info('game', 'action', { action, phase: res.state.phase });
   handleEvents(res.events);
+  drainAiPending(); // 先自动结算 AI 反应窗口，渲染一次到位
   renderAll();
-  if (res.state.phase === PHASE.GAME_OVER) {
+  if (game.state.phase === PHASE.GAME_OVER) {
     showResult();
     return true;
   }
-  if (res.state.phase === PHASE.PENDING && game.interaction) {
+  if (game.state.phase === PHASE.PENDING && !aiOwnsPending(game.state) && game.interaction) {
     game.interaction.showPendingResolution();
   }
   maybeRunAI();

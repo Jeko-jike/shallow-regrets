@@ -57,11 +57,13 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
 
     if (s.phase === PHASE.CATCH && ui.throwCardId != null) {
       const legal = getLegalThrowTargets(s);
-      if (legal.includes(i)) {
-        const cardId = ui.throwCardId;
-        ui.throwCardId = null;
-        dispatch({ type: ACTION.THROW_BACK, cardId, shoalIndex: i });
+      if (!legal.includes(i)) {
+        modal.showToast(legal.length ? '只能放回高亮（可操作）的浅滩' : '当前回合不允许放回这张牌', 'info');
+        return;
       }
+      const cardId = ui.throwCardId;
+      ui.throwCardId = null;
+      dispatch({ type: ACTION.THROW_BACK, cardId, shoalIndex: i });
       return;
     }
 
@@ -289,6 +291,11 @@ export function createBoardInteraction({ getState, getUi, dispatch, renderAll })
         break;
       }
       case 'REARRANGE': {
+        if ((pending.cards || []).length <= 1) {
+          dispatch({ type: ACTION.RESOLVE, resolution: { order: (pending.cards || []).slice() } });
+          done();
+          break;
+        }
         buildRearrangeModal(s, pending, dispatch, done);
         break;
       }

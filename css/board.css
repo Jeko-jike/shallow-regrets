@@ -125,7 +125,32 @@
   cursor: pointer;
   border-color: var(--accent-strong);
   color: var(--accent);
-  box-shadow: 0 0 12px rgba(52, 211, 153, 0.28);
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.4);
+  background: radial-gradient(circle at center, rgba(52, 211, 153, 0.18), rgba(52, 211, 153, 0.04));
+  animation: shoalDropPulse 1.3s ease-in-out infinite;
+}
+
+@keyframes shoalDropPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(52, 211, 153, 0.28); }
+  50% { box-shadow: 0 0 20px rgba(52, 211, 153, 0.55); }
+}
+
+/* 空浅滩可放回时的「放回」提示角标 */
+.shoal.empty .shoal-stack .shoal-drop-hint {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #04231a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  z-index: 4;
 }
 
 /* 抽出牌区：祭坛祭盘 */
